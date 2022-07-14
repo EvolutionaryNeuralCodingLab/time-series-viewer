@@ -1,0 +1,210 @@
+classdef NeuraLynxRecording < dataRecording
+    properties
+        dataFileNumbers %Numbers of recorded channel files
+        triggerFileName %The name (including full path) of the trigger file in Neuralynx recording
+        firstRecordStartTime_us %The time stamp of the first recorded waveform
+        lastRecordStartTime_us %The time stamp of the last recorded waveform
+        dspLowCutFrequency %Low-pass cutoff frequency in the Neuralynx DSP (in raw data)
+        dspHighCutFrequency %High-pass cutoff frequency in the Neuralynx DSP (in raw data)
+        recordingDuration_us %The end time of the recording (including all 512 samples of the last record)
+        %{
+        Properties of parent class: dataRecording
+        recordingDir %Full directory containing the recorded session
+        startDate %Start date (time) of Recording (matlab long format)
+        endDate %End date (time) of Recording (matlab long format)
+        samplingFrequency %Sampling rate
+        dataFileNames %Name of recording data files
+        channelNumbers %Numbers of the recorded channel
+        %}
+    end
+    properties (Constant, Hidden)
+        DefaultBitsForVisualStimTriggers=[1]; %Default TTL bits extracted
+        defaultChannelNumberForHearderExtraction=1; %Channel from which meta data is extracted (assumes that all channel were recorded similarly
+        samplesPerRecord=512; %Number of samples in one record of neuralynx data
+        listOfFieldsToExtractFromHeader=...
+            {'RecordSize','SamplingFrequency','ADMaxValue','ADBitVolts','DspLowCutFrequency','DspHighCutFrequency';
+            'nRecords','samplingFrequency','A2DMaxValue','A2DBitVolts','dspLowCutFrequency','dspHighCutFrequency'}; %List of fields to be extracted from the header and their associated property names
+        defaultLocalDir='C:\Users\Tulip\Documents\Academic\Post-Doc\Experiments'; %Default directory from which search starts
+    end
+    properties (Hidden)
+        A2DMaxValue %
+        A2DBitVolts %Quantization of data in terms of voltage (coversion between bits and volts)
+        saturationVoltage_uV %Max voltage allowed by the system
+        nRecords %Number of recorded records - it is not clear what this stands for (its not the total records in the recording)
+        recordLength_us
+        sample_us
+    end
+    methods
+        function obj=reloadMetaData(obj)
+            %Reloads the meta data from directory
+            %Usage: obj.reloadMetaData();
+            %Input: []
+            obj=getChannelInformation(obj);
+            obj=getHeaderInformation(obj);
+        end
+        function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
+            %Extract Neuralynx recording data from file to memory
+            %Usage: [V_uV,t_ms]=obj.getData(channels,startTime_ms,window_ms);
+            %Input : channels - [1xN] a vector with channel numbers as appearing in the data folder files
+            %        startTime_ms - a vector [1xN] of start times [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
+            %        window_ms - a scalar [1x1] with the window duration [ms].
+            %Output: V_us - A 3D matrix [nChannels x nTrials x nSamples] with voltage waveforms across specified channels and trials  
+            %        t_ms - A time vector relative to recording start (t=0 at start)
+            startTime_us=startTime_ms*1e3+obj.firstRecordStartTime_us;
+            windowSamples=round(window_ms/1e3*obj.samplingFrequency);
+            window_us=window_ms*1e3;
+            nWindows=numel(startTime_us);
+            nCh=length(channels);
+            
+            if all(startTime_ms>=0) && all((startTime_ms+window_ms+obj.recordLength_us/1000)<=(obj.recordingDuration_us/1000)) %fast extaction does not work on recording edges
+                
+                %generate time stamps for block waveform extraction and extract waveforms from file
+                singleTrialTimeStamps=(0:obj.recordLength_us:(window_us+obj.recordLength_us-obj.sample_us))';
+                nSingleTrialTimeStamps=numel(singleTrialTimeStamps);
+                timeVector=bsxfun(@plus,singleTrialTimeStamps,startTime_us);
+                
+                %run over all channels
+                V_uV=NaN(nCh,nWindows,windowSamples); %initialize waveform matrix
+                for i=1:nCh
+                    %extract Neuralynx data
+                    [timeStampsData, dataSamples] = Nlx2MatCSC...
+                        ([obj.recordingDir '\' obj.dataFileNames{channels(i)}],[1 0 0 0 1],0,5,timeVector(:));
+                    %define the number of junk samples in the begining of every time block and prepare extraction indices accordingly
+                    beginningResidualSamples=mod(  round(  (startTime_us-timeStampsData(1))*(obj.samplingFrequency/1e6) )   ,    obj.samplesPerRecord);
+                    idx=bsxfun(@plus,beginningResidualSamples'+nSingleTrialTimeStamps*obj.samplesPerRecord*(0:nWindows-1)',1:windowSamples);
+                end
+                %convert to [Volt] units and generate time vector [ms]
+                V_uV(i,:,:)=dataSamples(idx)*(obj.A2DBitVolts*1e6);
+                
+            else %this is for the special case that the segment cuts recording end or beginning
+                
+                endTime_us=(obj.recordingDuration_us+obj.firstRecordStartTime_us);
+                pOutSizeOfRecording=startTime_us<=(obj.firstRecordStartTime_us-window_us) | startTime_us>=endTime_us;
+                pOnRecordingEdge=((startTime_us<obj.firstRecordStartTime_us) | (startTime_us+window_us+obj.recordLength_us)>endTime_us) & ~pOutSizeOfRecording;
+                pInsideRecording=~(pOutSizeOfRecording | pOnRecordingEdge);
+                
+                V_uV=NaN(nCh,nWindows,windowSamples); %initialize waveform matrix
+                
+                %extract voltage regions that do not require special treatment
+                if any(pInsideRecording)
+                    [V_uV(:,pInsideRecording,:)]=obj.getData(channels,startTime_ms(pInsideRecording),window_ms);
+                end
+                
+                %Go over each trial and channel and extract
+                for i=1:nCh
+                    for j=find(pOnRecordingEdge)
+                    %extract Neuralynx data
+                    [timeStampsData, dataSamples] = Nlx2MatCSC...
+                        ([obj.recordingDir '\' obj.dataFileNames{channels(i)}],[1 0 0 0 1],0,4,[startTime_us(j) startTime_us(j)+window_us]);
+                    nSamples=numel(dataSamples);
+                    t=timeStampsData(1):obj.sample_us:((nSamples-1)*obj.sample_us+timeStampsData);
+                    pt=find(t>=startTime_us(j) & t<startTime_us(j)+window_us);
+                    nt=length(pt);
+                    startSample=abs(round((startTime_us(j)-t(pt(1)))/obj.sample_us))+1;
+                    V_uV(i,j,startSample:(startSample+nt-1))=dataSamples(pt)*(obj.A2DBitVolts*1e6);
+                    end
+                end
+            end
+            if nargout==2
+                t_ms=(1:length(V_uV))*(1e3/obj.samplingFrequency);
+            end
+        end
+        function [T_ms]=getTrigger(obj,startTime_ms,window_ms,TTLbits)
+            %Extract triggers from file Neuralynx recording
+            %Usage : [T_ms]=obj.getTrigger(startTime_ms,endTime_ms,TTLbits)
+            %Input : startTime_ms - start time [ms].
+            %        window_ms - the window duration [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
+            %        TTLbits - which bit to extract for time stamps (out of 8,default = first bit, 1)
+            %Output: T_ms - trigger times [ms]
+            
+            if nargin==3
+                TTLbits=obj.DefaultBitsForVisualStimTriggers;
+            else
+                error('Not enough input: [T_ms]=obj.getTrigger(startTime_ms,endTime_ms,TTLbits)');
+            end
+            
+            %read Data from *.nev files (NeuroLynx) - files containing the data
+            %fieldSelectionTrigger: (1): Timestamps, (2): Event IDs, (3): TTLs, (4): Extras, (5): Event Strings
+            %Bits are coded as decimal integers
+            if isinf(window_ms)
+                [timeStampsTrig, TTLsTrig] = Nlx2MatEV...
+                    ([obj.recordingDir '\' obj.triggerFileName],[1 0 1 0 0],0,1,[]);
+                
+            else
+                [timeStampsTrig, TTLsTrig] = Nlx2MatEV...
+                    ([obj.recordingDir '\' obj.triggerFileName],[1 0 1 0 0],0,4,1e3*[startTime_ms; startTime_ms+window_ms]+obj.firstRecordStartTime_us);
+            end
+            
+            %decode decimal TTL to Binary channels
+            TTLBinaryCh=logical(de2bi(TTLsTrig));
+            T_ms=(timeStampsTrig(TTLBinaryCh(:,TTLbits))-obj.firstRecordStartTime_us)/1e3;
+        end
+    end
+    
+    methods (Hidden)
+        %class constructor
+        function obj = NeuraLynxRecording(recordingDir)
+            if nargin==1 %if directory with data was not entered open get directory GUI
+                obj.recordingDir=recordingDir;
+                if ~isdir(obj.recordingDir)
+                    error('Object was not constructed since no valid folder was choosen');
+                end
+            elseif nargin==0
+                obj.recordingDir = uigetdir(obj.defaultLocalDir,'Choose the folder containing the data');
+                if obj.recordingDir==0 %no folder chosen
+                    error('Object was not constructed since no folder was choosen');
+                end
+            else
+                error('Object was not constructed since too many parameters were given at construction');
+            end
+            obj=getChannelInformation(obj);
+            obj=getHeaderInformation(obj);
+            triggerNames=dir([obj.recordingDir '\*.nev']);
+            if length(triggerNames)~=1
+                disp('triggers not extracted - more than one trigger file in directory');
+            else
+                obj.triggerFileName=triggerNames.name;
+            end
+        end
+        function obj=getChannelInformation(obj)
+            %Reads recording files from recording directory and extracts file information
+            allFiles=dir([obj.recordingDir '\*.ncs']);
+            unsorteddataFileNames={allFiles.name};
+            unsorteddataFileNumbers=arrayfun(@(x) str2double(x.name(4:end-4)), allFiles);
+            
+            [~,places]=sort(unsorteddataFileNumbers);
+            obj.dataFileNames=unsorteddataFileNames(places);
+            obj.dataFileNumbers=unsorteddataFileNumbers(places);
+            obj.channelNumbers=obj.dataFileNumbers;
+        end
+        function obj=getHeaderInformation(obj) %get parameters from file header
+            %get header and first time stamp from recordings
+            [timeStamps, header] = Nlx2MatCSC...
+                ([obj.recordingDir '\' obj.dataFileNames{obj.defaultChannelNumberForHearderExtraction}],[1 0 0 0 0],1,1,[]);
+            obj.firstRecordStartTime_us=timeStamps(1);
+            obj.lastRecordStartTime_us=timeStamps(end);
+            for i=1:length(header)
+                if ~isempty(header{i})
+                    if header{i}(1)=='-'
+                        pValue=find(header{i}==' ',1,'first');
+                        paramLineInHeader=find(strcmp(header{i}(2:pValue-1),obj.listOfFieldsToExtractFromHeader(1,:)));
+                        if ~isempty(paramLineInHeader)
+                            obj.(obj.listOfFieldsToExtractFromHeader{2,paramLineInHeader})=...
+                                str2num(header{i}(pValue+1:end));
+                        end
+                    elseif header{i}(1:14)=='## Time Opened'
+                        pValue=find(header{i}==' ',7,'first');
+                        obj.startDate=datenum(header{i}([pValue(4)+1:pValue(5) pValue(7)+1:end]));
+                    elseif header{i}(1:14)=='## Time Closed'
+                        pValue=find(header{i}==' ',7,'first');
+                        obj.endDate=datenum(header{i}([pValue(4)+1:pValue(5) pValue(7)+1:end]));
+                    end
+                end
+            end
+            obj.sample_us=1/obj.samplingFrequency*1e6;
+            obj.saturationVoltage_uV=obj.A2DMaxValue*obj.A2DBitVolts;
+            obj.recordLength_us=obj.samplesPerRecord*obj.sample_us;
+            obj.recordingDuration_us=obj.lastRecordStartTime_us-obj.firstRecordStartTime_us+obj.recordLength_us;
+        end
+    end
+end

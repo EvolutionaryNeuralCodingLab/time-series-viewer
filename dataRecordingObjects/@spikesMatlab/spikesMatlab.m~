@@ -1,0 +1,78 @@
+classdef spikesMatlab < dataRecording
+    properties
+        t %[ms]
+        ic
+        trig %[ms]
+    end
+    properties (Constant, Hidden)
+        defaultLocalDir='C:\Users\Tulip\Documents\Academic\Post-Doc\Experiments'; %Default directory from which search starts
+        simulationSamplingFrequency=1000*10; 
+        signalBits % the quantization of the sampling card
+        numberOfCharFromEndToBaseName %the number of characters from the end of the file name to get to the base file name
+  
+    end
+    methods
+        function obj=reloadMetaData(obj)
+            obj.recordingDuration_ms=max(obj.t)-min(obj.t);
+            nNeurons=size(obj.ic,2);
+            for i=1:nNeurons
+                obj.channelNames{i}=[num2str(obj.ic(1,i)) '-' num2str(obj.ic(2,i))];
+            end
+            obj.channelNumbers=1:nNeurons;
+        end
+        function obj=updateSamplingFrequency(obj)
+            load([obj.recordingDir '\' obj.dataFileNames],'-mat', 't');
+            obj.t=round(t/(obj.simulationSamplingFrequency/obj.samplingFrequency));
+        end
+        function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
+            %Extract filtered matlab data from file to memory
+            %Usage: [V_uV,t_ms]=obj.getData(channels,startTime_ms,window_ms);
+            %Input : channels - [1xN] a vector with channel numbers as appearing in the data folder files
+            %        startTime_ms - a vector [1xN] of start times [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
+            %        window_ms - a scalar [1x1] with the window duration [ms].
+            %Output: V_us - A 3D matrix [nChannels x nTrials x nSamples] with voltage waveforms across specified channels and trials  
+            %        t_ms - A time vector relative to recording start (t=0 at start)
+            [V_uV]=permute(BuildBurstMatrix(obj.ic,obj.t,startTime_ms,window_ms),[2 1 3]);
+            V_uV=V_uV(channels,:,:);
+            nSamples=size(V_uV,3);
+            if nargout==2
+                t_ms=(1:nSamples)*(1e3/obj.samplingFrequency);
+            end
+        end
+        function [T_ms]=getTrigger(obj,startTime_ms,window_ms,name)
+            T_ms={};
+        end
+    end
+    
+    methods (Hidden)
+        %class constructor
+        function obj = spikesMatlab(spikeDataFileName,originalRecordingObject)
+            if nargin==1 %if directory with data was not entered open get directory GUI
+                [pathstr, name, ext] = fileparts(spikeDataFileName);
+                if isempty(pathstr) %in case the file is in the current directory
+                    obj.recordingDir=cd;
+                else
+                    obj.recordingDir=pathstr;
+                end
+                obj.dataFileNames=[name ext];
+                if ~isdir(obj.recordingDir) || ~exist([obj.recordingDir '\' obj.dataFileNames],'file')
+                    error('Object was not constructed since no valid folder was choosen');
+                end
+            elseif nargin==0
+                [obj.dataFileNames,obj.recordingDir]= uigetfile('*.mat','Choose the Mat file',obj.defaultLocalDir,'MultiSelect','on');
+                if obj.dataFileNames==0 %no folder chosen
+                    error('Object was not constructed since no folder was choosen');
+                end
+            else
+                error('Object was not constructed since too many parameters were given at construction');
+            end
+            
+            obj.samplingFrequency=10000; %default frequency [Hz] - this is decided by the user and can be changed to get more/less accurate spike times
+            obj=updateSamplingFrequency(obj); %also loads t
+            
+            load([obj.recordingDir '\' obj.dataFileNames],'ic');
+            obj.ic=ic;
+            obj=reloadMetaData(obj);
+        end
+    end
+end

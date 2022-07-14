@@ -1,0 +1,67 @@
+McsMatlabDataTools
+==================
+--------------------------
+Version 0.3.0 (2015-04-23)
+--------------------------
+
+- New features:
+	* Segment stream subtype Average is treated independently from subtype Spike.
+		Depending on the DataSubType of a McsSegmentStream, averages are handled by
+		the McsAverageSegment class and (spike) cutouts by the McsCutoutSegment class,
+		both having their own plot function.
+	* Added option 'window' to readPartialEventData and readPartialTimeStampData to 
+		read in events and time stamps from a particular time range
+	* Accept McsHdf5ProtocolVersion 3
+
+- Bug fixes:
+	* Fixed option 'event' in readPartialEventData to work as a vector of event indices
+	* Fixed option 'timestamp' in readPartialTimeStampData to work as a vector of time stamp indices
+
+--------------------------
+Version 0.2.1 (2015-02-16)
+--------------------------
+
+- Bug fix:
+	* Version check for McsHdf5ProtocolVersion 2
+
+--------------------------
+Version 0.2.0 (2014-12-18)
+--------------------------
+
+- New features:
+	* Loading of partial data for all stream types: 
+			readPartialChannelData
+			readPartialFrameData
+			readPartialEventData
+			readPartialSegmentData
+			readPartialTimeStampData
+	* Custom 'disp' function for all streams. 
+			With this, just displaying the stream information (e.g. data.Recording{1}.Analogstream{1}) will not trigger reading 
+			the data from the file.
+
+- Bug fixes:
+	* Corrected the dimensions of the McsSegmentStream SegmentData. 
+	  For consistency, this has to be (samples x segments) or 
+	  (samples x segments x multisegments).
+	* Corrected the dimension of the McsSegmentStream SegmentDataTimeStamps. 
+	  This is now a (1 x samples) instead of a (samples x 1) vector
+	* Corrected several errors in the documentation and the comments
+			
+- Code refactoring for consistency:
+	* Renamed field 'FrameDataEntities' to 'FrameDataEntity' in McsFrameStream
+	* Renamed function 'readPartialFrame' to 'readPartialFrameData' in McsFrameDataEntity
+	* Renamed parameter 'channels' to 'channel' in McsAnalogStream.plot function
+	* Renamed parameter 'segments' to 'segment' in McsSegmentStream.plot function
+
+--------------------------
+Version 0.1.1 (2014-11-03)
+--------------------------
+
+- Bug fix for detecting, whether the hdf5read or the h5read function should be used.
+- Updated the documentation
+
+--------------------------
+Version 0.1.0 (2014-07-24)
+--------------------------
+
+- first release
