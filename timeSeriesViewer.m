@@ -181,8 +181,8 @@ end
             end
         end
         if AVG.plotData.plotAnalogChannels
-            AVG.plotData.A=AVG.recordingObj.getAnalogData([],AVG.Params.startTime,AVG.Params.window);
-            AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames;
+            AVG.plotData.A=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),AVG.Params.startTime,AVG.Params.window);
+            AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces);
         end
         
         %Run the relevant plot method
@@ -224,6 +224,7 @@ end
         AVG.Params.analogChannelNumbers=AVG.recordingObj.analogChannelNumbers;
         
         AVG.Params.activeChannelPlaces=1:numel(AVG.Params.channelNumbers);
+        AVG.Params.activeAnalogPlaces=true(1,numel(AVG.Params.analogChannelNumbers));
         
         %adjust start time
         AVG.Params.startTime=AVG.Params.defaultStartTime; %[ms]
@@ -524,7 +525,7 @@ end
     function initializeNewRecording
         set(AVG.hGen.messageBox, 'string','Initializing new data','ForegroundColor','r');
         initializeViewer;
-        if exist(AVG.hVideoSyncFigure.hFigure) && isvalid(AVG.hVideoSyncFigure.hFigure)
+        if exist(AVG.hVideoSyncFigure.hFigure,'var') && isvalid(AVG.hVideoSyncFigure.hFigure)
             close(AVG.hVideoSyncFigure.hFigure); %using close evokes the close request function and is better than delete()
         end
         AVG.plotData.refreshPlot=1;
@@ -641,12 +642,17 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Channel selection Callbacks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function CallbackChAddChannelsEdit(hObj,event)
-        ChannelsToAdd=str2num(get(hObj,'string'));
-        for i=1:numel(ChannelsToAdd)
-            P=find(AVG.Params.channelNumbers==ChannelsToAdd(i));
-            if ~isempty(P)
-                AVG.Params.activeChannelPlaces=[AVG.Params.activeChannelPlaces P];
+        inStr=get(hObj,'string');
+        ChannelsToAdd=str2num(inStr);
+        if ~isempty(ChannelsToAdd)
+            for i=1:numel(ChannelsToAdd)
+                P=find(AVG.Params.channelNumbers==ChannelsToAdd(i));
+                if ~isempty(P)
+                    AVG.Params.activeChannelPlaces=[AVG.Params.activeChannelPlaces P];
+                end
             end
+        else
+            AVG.Params.activeAnalogPlaces=AVG.Params.activeAnalogPlaces | ismember(AVG.Params.analogChannelNames,split(inStr,' '));
         end
         set(hObj,'string','Add channels'); %replace entered channel string with default string
         updatePlot;
@@ -654,36 +660,44 @@ end
 
     function CallbackChRemoveChannelsEdit(hObj,event)
         %If a channel that was selected does not exist or is already removed, it is not removed and no error is given
-        ChannelsToRemove=str2double(get(hObj,'string'));
-        if ~isnan(ChannelsToRemove)
+        inStr=get(hObj,'string');
+        ChannelsToRemove=str2num(inStr);
+        if ~isempty(ChannelsToRemove)
             for i=1:length(ChannelsToRemove)
                 AVG.Params.activeChannelPlaces(find(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces)==ChannelsToRemove(i)))=[];
             end
         else
+            AVG.Params.activeAnalogPlaces(ismember(AVG.Params.analogChannelNames,split(inStr,' ')))=false;
         end
         set(hObj,'string','Remove channels');%replace entered channel string with default string
         updatePlot;
     end
 
     function CallbackChKeepOnlyChannelsEdit(hObj,event)
-        ChannelsToKeep=str2num(get(hObj,'string'));
-        tmpActiveChannels=zeros(1,numel(ChannelsToKeep));
-        for i=1:length(ChannelsToKeep)
-            P=find(AVG.Params.channelNumbers==ChannelsToKeep(i));
-            if ~isempty(P)
-                tmpActiveChannels(i)=P;
-            else
-                disp('Part of the selected channels do not exist in the recording!!!!');
-                return;
+        inStr=get(hObj,'string');
+        ChannelsToKeep=str2num(inStr);
+        if ~isempty(ChannelsToKeep)
+            tmpActiveChannels=zeros(1,numel(ChannelsToKeep));
+            for i=1:length(ChannelsToKeep)
+                P=find(AVG.Params.channelNumbers==ChannelsToKeep(i));
+                if ~isempty(P)
+                    tmpActiveChannels(i)=P;
+                else
+                    disp('Part of the selected channels do not exist in the recording!!!!');
+                    return;
+                end
             end
+            AVG.Params.activeChannelPlaces=tmpActiveChannels;
+        else
+            AVG.Params.activeAnalogPlaces=ismember(AVG.Params.analogChannelNames,split(inStr,' '));
         end
-        AVG.Params.activeChannelPlaces=tmpActiveChannels;
         set(hObj,'string','Keep only channels');%replace entered channel string with default string
         updatePlot;
     end
 
     function CallbackChEnableAllChannelsPush(hObj,event)
         AVG.Params.activeChannelPlaces=1:numel(AVG.Params.channelNumbers);
+        AVG.Params.activeAnalogPlaces=true(1,numel(AVG.Params.analogChannelNumbers));
         updatePlot;
     end
 
@@ -691,6 +705,9 @@ end
         channelsPerColumn=30;
         nActiveChannels=length(AVG.Params.activeChannelPlaces);
         nChannels=numel(AVG.Params.channelNumbers);
+        nActiveAnalogChannels=length(AVG.Params.activeAnalogPlaces);
+        nAnalogChannels=numel(AVG.Params.analogChannelNumbers);
+        
         AVG.manualChannelSelectionFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.01 AVG.hMainFigure.scrsz(4)*0.07 AVG.hMainFigure.scrsz(3)*0.3 AVG.hMainFigure.scrsz(4)*0.85], ...
             'Name','Activity Viewer - manual channel selection', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','none', 'HandleVisibility','off');
         AVG.manualChannelSelectionFigure.VBox=uix.VBox('Parent',AVG.manualChannelSelectionFigure.hFigure, 'Spacing',4, 'Padding',4);
@@ -700,18 +717,27 @@ end
             AVG.manualChannelSelectionFigure.hCh(i)=uicontrol('Parent', AVG.manualChannelSelectionFigure.hChannelGrid, ...
                 'Style','checkbox', 'String', [num2str(AVG.Params.channelNumbers(i)) ' - ' AVG.Params.channelNames{i}],'value',0);
         end
+        for i=1:nAnalogChannels
+            AVG.manualChannelSelectionFigure.hCh(i+nChannels)=uicontrol('Parent', AVG.manualChannelSelectionFigure.hChannelGrid, ...
+                'Style','checkbox', 'String', [num2str(AVG.Params.analogChannelNumbers(i)) ' - ' AVG.Params.analogChannelNames{i}],'value',0);
+        end
         for i=1:nActiveChannels
             set(AVG.manualChannelSelectionFigure.hCh(AVG.Params.activeChannelPlaces),'value',1);
         end
-        set(AVG.manualChannelSelectionFigure.hChannelGrid,'Widths',-1*ones(1,ceil(nActiveChannels/channelsPerColumn)),'Heights', -1*ones(1,channelsPerColumn));
+        for i=1:nActiveAnalogChannels
+            set(AVG.manualChannelSelectionFigure.hCh(nChannels+find(AVG.Params.activeAnalogPlaces)),'value',1);
+        end
+        set(AVG.manualChannelSelectionFigure.hChannelGrid,'Widths',-1*ones(1,ceil((nActiveChannels+nActiveAnalogChannels)/channelsPerColumn)),'Heights', -1*ones(1,channelsPerColumn));
         set(AVG.manualChannelSelectionFigure.VBox, 'Heights',[-1 30]);
     end
 
     function CallbackManualChSelectionApplyPush(hObj,event)
-        for i=1:numel(AVG.Params.channelNumbers)
+        nCh=numel(AVG.Params.channelNumbers);
+        for i=1:(nCh+numel(AVG.Params.analogChannelNumbers))
             p(i)=get(AVG.manualChannelSelectionFigure.hCh(i),'value');
         end
-        AVG.Params.activeChannelPlaces=AVG.Params.channelNumbers(p==1);
+        AVG.Params.activeChannelPlaces=AVG.Params.channelNumbers(p(1:nCh)==1);
+        AVG.Params.activeAnalogPlaces=AVG.Params.analogChannelNumbers(p((nCh+1):end)==1);
         delete(AVG.manualChannelSelectionFigure.hFigure);
         updatePlot;
     end

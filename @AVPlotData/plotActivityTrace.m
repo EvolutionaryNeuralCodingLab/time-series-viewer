@@ -36,8 +36,8 @@ end
 
 %analog channels are added as regular electrode channels (maybe worth changing in the future).
 if obj.plotAnalogChannels
+    nA=size(obj.A,1);
     A=squeeze(obj.A);
-    nA=size(A,1);
     if nA==1
         A=A';
     end

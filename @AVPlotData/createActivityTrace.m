@@ -27,7 +27,7 @@ set(obj.hPlotControls.plotPropGrid, 'Widths',-2,'Heights', [30 30 30 30 30 30] )
 %callback functions for plot controls
     function CallbackPlotAnalogDataCheckbox(hObj,event)
         obj.plotAnalogChannels=obj.hPlotControls.plotChannelNumbersCheckbox.Value;
-        obj.replot;
+        %can not replot here since data has to be first extracted and this happens in time series viewer.
     end
     function CallbackAnalogScalingEdit(hObj,event)
         obj.analogScaling=str2double(obj.hPlotControls.analogScalingEdit.String);
