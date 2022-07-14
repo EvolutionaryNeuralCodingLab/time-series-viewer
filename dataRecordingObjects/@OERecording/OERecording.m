@@ -201,7 +201,7 @@ classdef OERecording < dataRecording
             end
             
             if obj.convertData2Double
-                V_uV = permute(double(V_uV) * obj.MicrovoltsPerADA(1) ,[3 2 1]);
+                V_uV = permute(double(V_uV) * obj.MicrovoltsPerADA(1) *1e6 ,[3 2 1]); %*1e6 since units for analog channels are given in volts.
             else
                 V_uV = permute(V_uV,[3 2 1]);
             end

@@ -654,9 +654,12 @@ end
 
     function CallbackChRemoveChannelsEdit(hObj,event)
         %If a channel that was selected does not exist or is already removed, it is not removed and no error is given
-        ChannelsToRemove=str2num(get(hObj,'string'));
-        for i=1:length(ChannelsToRemove)
-            AVG.Params.activeChannelPlaces(find(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces)==ChannelsToRemove(i)))=[];
+        ChannelsToRemove=str2double(get(hObj,'string'));
+        if ~isnan(ChannelsToRemove)
+            for i=1:length(ChannelsToRemove)
+                AVG.Params.activeChannelPlaces(find(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces)==ChannelsToRemove(i)))=[];
+            end
+        else
         end
         set(hObj,'string','Remove channels');%replace entered channel string with default string
         updatePlot;

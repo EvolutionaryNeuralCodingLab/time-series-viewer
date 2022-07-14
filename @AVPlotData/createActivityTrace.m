@@ -21,15 +21,17 @@ obj.hPlotControls.plotChannelNumbersCheckbox=uicontrol('Parent', obj.hPlotContro
 obj.hPlotControls.plotChannelNumbersCheckbox=uicontrol('Parent', obj.hPlotControls.plotPropGrid,...
     'Callback',@CallbackPlotAnalogDataCheckbox, 'Style','checkbox','value',obj.plotParams.plotAnalogData,'String','plot analog data');
 obj.hPlotControls.analogScalingEdit=uicontrol('Parent', obj.hPlotControls.plotPropGrid,...
-    'Callback',@CallbackAnalogScalingEdit,'Style','edit', 'String','analog scaling');
-set(obj.hPlotControls.plotPropGrid, 'Widths',-1,'Heights', [30 30 30 30 30 30] );
+    'Callback',@CallbackAnalogScalingEdit,'Style','edit', 'String','analog scaling (usually 0.001)');
+set(obj.hPlotControls.plotPropGrid, 'Widths',-2,'Heights', [30 30 30 30 30 30] );
 
 %callback functions for plot controls
     function CallbackPlotAnalogDataCheckbox(hObj,event)
         obj.plotAnalogChannels=obj.hPlotControls.plotChannelNumbersCheckbox.Value;
+        obj.replot;
     end
     function CallbackAnalogScalingEdit(hObj,event)
         obj.analogScaling=str2double(obj.hPlotControls.analogScalingEdit.String);
+        obj.replot;
     end
 
     function CallbackNoOverlapPush(hObj,event)
@@ -43,7 +45,7 @@ set(obj.hPlotControls.plotPropGrid, 'Widths',-1,'Heights', [30 30 30 30 30 30] )
         maxM=nanmax(M,[],2);
         obj.plotParams.shifts=flipud(cumsum([0;maxM(end:-1:2)-minM(end-1:-1:1)]));
         set(obj.hPlotControls.verticalShiftEdit,'string','no overlap');
-        obj.plotParams.yl=[obj.plotParams.shifts(end)+minM(end) obj.plotParams.shifts(1)+maxM(1)]
+        obj.plotParams.yl=[obj.plotParams.shifts(end)+minM(end) obj.plotParams.shifts(1)+maxM(1)];
         ylim(obj.hPlotAxis,obj.plotParams.yl);
         obj.replot;
     end
