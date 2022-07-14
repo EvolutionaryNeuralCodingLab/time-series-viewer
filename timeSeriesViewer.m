@@ -524,7 +524,7 @@ end
     function initializeNewRecording
         set(AVG.hGen.messageBox, 'string','Initializing new data','ForegroundColor','r');
         initializeViewer;
-        if isvalid(AVG.hVideoSyncFigure.hFigure)
+        if exist(AVG.hVideoSyncFigure.hFigure) && isvalid(AVG.hVideoSyncFigure.hFigure)
             close(AVG.hVideoSyncFigure.hFigure); %using close evokes the close request function and is better than delete()
         end
         AVG.plotData.refreshPlot=1;
