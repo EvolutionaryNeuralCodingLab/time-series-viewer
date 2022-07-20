@@ -641,6 +641,8 @@ end
     end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Channel selection Callbacks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %Todo: All the channel selection functions can be simplified for the electrode channel if activeChannelPlaces is a binary vector. See how it is done for the analog channels
     function CallbackChAddChannelsEdit(hObj,event)
         inStr=get(hObj,'string');
         ChannelsToAdd=str2num(inStr);
