@@ -340,7 +340,6 @@ classdef OERecording < dataRecording
             catch ME
                 pCh=cellfun(@(x) mean(x([1 2])=='CH')==1,channelNamesAll);
                 pAnalogCh=cellfun(@(x) mean(x([1 2])=='AU')==1 || mean(x([1 2])=='AD')==1,channelNamesAll);
-                rethrow(ME)
             end
             
             
