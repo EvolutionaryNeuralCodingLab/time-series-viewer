@@ -479,9 +479,9 @@ end
             %startFrame=find(AVG.Params.triggerFrameSync>AVG.Params.startTime,1,'first');
             %endFrame=find(AVG.Params.triggerFrameSync<(AVG.Params.startTime+AVG.Params.window),1,'last');
             nActFrames=numel(pFrames);
-            nFrames=AVG.Params.window/AVG.Params.frameRate;
+            nFrames=AVG.Params.window/1000*AVG.Params.frameRate;
             if nActFrames<nFrames-1 %can happen if the there is no video (of full video during the relevant times
-                msgbox(['Missing frames in segment! video exists between ' num2str(AVG.Params.triggerFrameSync(1)) ' - ' num2str(AVG.Params.triggerFrameSync(end))],'Attention','error','replace');
+                msgbox(['Missing frames in segment or sampling rate missmatch! video exists between ' num2str(AVG.Params.triggerFrameSync(1)) ' - ' num2str(AVG.Params.triggerFrameSync(end))],'Attention','error','replace');
                 return;
             end
             hTmp=line(AVG.hMainFigure.hMainAxis,[0 0],AVG.hMainFigure.hMainAxis.YLim,'color','r');
