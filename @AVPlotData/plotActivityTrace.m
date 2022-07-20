@@ -35,8 +35,8 @@ elseif obj.nCh==1 & obj.plotParams.plotChannelNumbers
 end
 
 %analog channels are added as regular electrode channels (maybe worth changing in the future).
-if obj.plotAnalogChannels
-    nA=size(obj.A,1);
+nA=size(obj.A,1);
+if obj.plotAnalogChannels && nA>0
     A=squeeze(obj.A);
     if nA==1
         A=A';
