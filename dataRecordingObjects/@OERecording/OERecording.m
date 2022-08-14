@@ -495,6 +495,12 @@ classdef OERecording < dataRecording
             obj.folderMode=1;
             obj.multifileMode=false;
             
+            if obj.folderMode
+                if recordingFile(end)~=filesep
+                    recordingFile=[recordingFile filesep];
+                end
+            end
+            
             %If no files were entered open GUI for choosing a file or a directory else get the files entered
             if ~isempty(recordingFile) %if directory with data was not entered open get directory GUI
                 [pathstr, name, ext] = fileparts(recordingFile);
