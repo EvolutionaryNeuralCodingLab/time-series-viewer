@@ -287,12 +287,15 @@ classdef (Abstract) dataRecording < handle
             %make parameter structure
             par=parseObj.Results;
             
+            % generate a recording specific identifier
+            recID=num2str(sum(par.outFolder));
+            
             % generate config structure
             rootH = par.tempFilesFolder; %where to save temp files for spike sorting (should be a fast drive)
             
             ops.trange    = [par.tStart',par.tEnd']/1000; % time range to sort - move to time units of seconds
             ops.NchanTOT  = numel(obj.channelNumbers); % total number of channels in your recording
-            ops.fproc   = fullfile(rootH,'temp_wh.dat'); % proc file on a fast SSD
+            ops.fproc   = fullfile(rootH,['temp_wh_' recID '.dat']); % proc file on a fast SSD
             ops.fbinary = fullfile(obj.recordingDir, obj.dataFileNames{1});
             ops.fs = obj.samplingFrequency(1);% sample rate
             ops.fshigh = 200;% frequency for high pass filtering (150)
@@ -375,10 +378,14 @@ classdef (Abstract) dataRecording < handle
             if ~exist('rezPreProc','var') || par.overwrite==true
                 rezPreProc = preprocessDataSub(ops);
                 save(tmpSaveFile,'rezPreProc')
+            else
+                disp('pre processing loaded from last saved version');
             end
             if ~exist('rezShift','var') || par.overwrite==true
                 rezShift                = datashift2(rezPreProc, 1);
                 save(tmpSaveFile,'rezShift','-append')
+            else
+                disp('Shift processing loaded from last saved version');
             end
             
             if par.useKiloSort3
@@ -394,7 +401,9 @@ classdef (Abstract) dataRecording < handle
                             st(5,:) = cF;
                         end
                     %}
-                    save(tmpSaveFile,'rezSpk','st3','tF','-append')  
+                    save(tmpSaveFile,'rezSpk','st3','tF','-append')
+                else
+                    disp('Spike extraction loaded from last saved version');
                 end
                 
                 
@@ -407,6 +416,8 @@ classdef (Abstract) dataRecording < handle
                     % correct times for the deleted batches
                     %rez=correct_time(rez);
                     save(tmpSaveFile,'rez','-append')
+                else
+                    disp('Final template learning and clustering loaded from last saved version');
                 end
                 % rewrite temp_wh to the original length
                 %rewrite_temp_wh(ops)
@@ -433,9 +444,11 @@ classdef (Abstract) dataRecording < handle
                     rez=correct_time(rez);
                     
                     % rewrite temp_wh to the original length
-                    rewrite_temp_wh(ops)
+                    rewrite_temp_wh(ops);
                     
-                    save(tmpSaveFile,'rez','-append')
+                    save(tmpSaveFile,'rez','-append');
+                else
+                    disp('Final template learning and clustering loaded from last saved version');
                 end
             end
             

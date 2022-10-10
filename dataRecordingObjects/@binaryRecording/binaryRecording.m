@@ -252,6 +252,9 @@ classdef binaryRecording < dataRecording
                 disp('Object was not constructed since too many parameters were given at construction');
                 return;
             end
+            if ~any(strcmp(recordingFile{1}(end-2:end),{'bin','dat'}))
+                warning('Recording file is not given, this may create errors, please provide a *.bin filename');
+            end
             obj=obj.getRecordingFiles(recordingFile,obj.fileExtension);
             
             if isfile([obj.metaDataFile,'.mat']) && ~obj.overwriteMetaData
