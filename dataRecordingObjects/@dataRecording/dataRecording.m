@@ -243,6 +243,10 @@ classdef (Abstract) dataRecording < handle
                     disp('Multiple electrode detected, stacking them horizontally in display');
                 end
                 
+                obj.chLayoutNumbers=[];
+                obj.chLayoutNames={};
+                obj.chLayoutPositions=[];
+                lastElectrode=0;
                 for i=1:numel(allElectrodes)
                     elecString=regexp(allElectrodes{i},'_','split');
                     electrodePitch(i)=str2num(elecString{1});
@@ -564,9 +568,9 @@ classdef (Abstract) dataRecording < handle
         function []=convertLayoutKSort(obj,outputFile,badChannels)
             if nargin<2
                 if iscell(obj.recordingDir)
-                 outputFile=fullfile(obj.recordingDir{1}, 'chanMap.mat');
+                    outputFile=fullfile(obj.recordingDir{1}, 'chanMap.mat');
                 else
-                outputFile=fullfile(obj.recordingDir, 'chanMap.mat');
+                    outputFile=fullfile(obj.recordingDir, 'chanMap.mat');
                 end
             end
             if nargin<3
