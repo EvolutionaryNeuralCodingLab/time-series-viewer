@@ -9,28 +9,33 @@ classdef (Abstract) dataRecording < handle
         recordingDuration_ms %(1x1) the total duration of the recording in [ms]
         channelNames % (Cell 1xN) a cell array with the N names of the channels
         channelNumbers % (1xN) an array with integer channel numbers (>=1 integer)
-        channelNumbersOrignal %check if we can remove this - not clear
+        
         triggerNames %the names of trigger channels (not critical)
         analogChannelNumbers % (1xN) the numbers of channels containing non-electrode analog inputs
         analogChannelNames % (1xN) the numbers of channels containing non-electrode analog inputs
-        dspLowCutFrequency % (1x1) Low-pass cutoff frequency in the Neuralynx DSP (in raw data)
-        dspHighCutFrequency % (1x1) High-pass cutoff frequency in the Neuralynx DSP (in raw data)
-        nRecordings % (1x1) number of recording files
+        
         chLayoutNumbers %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
         chLayoutNames %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
         electrodePitch % distance between electrodes (not critical)
         chLayoutPositions % (1xN or 2xN or 3xN) array of electrode position in [x or x,y or x,y,z]
         layoutName %the name of the channel layout (electrode type)
-        n2s % a translation between the number of the channel to the serial number of the channel (in the case where all channels are consecutive)
         
         convertData2Double = 1; % if data should be converted to double from the original quantization
         ZeroADValue % the digital zero value
         MicrovoltsPerAD % the digital to analog conversion value
         datatype        % class of data in the recording
         
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        n2s % a translation between the number of the channel to the serial number of the channel (in the case where all channels are consecutive)
+        dspLowCutFrequency % (1x1) Low-pass cutoff frequency in the Neuralynx DSP (in raw data)
+        dspHighCutFrequency % (1x1) High-pass cutoff frequency in the Neuralynx DSP (in raw data)
+        nRecordings % (1x1) number of recording files
+        
         overwriteMetaData = false; %internal parameter - if true recalculates meta data
         metaDataFile
         includeOnlyDigitalDataInTriggers = false;
+        channelNumbersOrignal %check if we can remove this - not clear
     end
     
     properties (SetAccess=protected) %these are properties that are not synchronized or loaded from meta files
@@ -525,7 +530,7 @@ classdef (Abstract) dataRecording < handle
             currentIdx=0;prevCh=-1;
             nClusters=numel(clusterTable.ch);
             for i=1:nClusters
-                t{i}=spike_times(spike_clusters==clusterTable.id(i))';
+                t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))';
                 ic(1,i)=clusterTable.ch(i);
                 ic(3,i)=currentIdx+1;
                 ic(4,i)=currentIdx+numel(t{i});
