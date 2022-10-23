@@ -497,6 +497,17 @@ classdef (Abstract) dataRecording < handle
                 disp('cluster_info.tsv not found! Please first perform manual annotation using phy and try again.');
                 return;
             end
+            
+            saveFileAll=[pathToPhyResults filesep 'sorting_tIc_All.mat'];
+            saveFileValid=[pathToPhyResults filesep 'sorting_tIc.mat'];
+            
+            if nargout==1
+                if isfile(saveFileValid)
+                    spkData=load(saveFileValid);
+                    return;
+                end
+            end
+            
             readNPYPath=which('readNPY.m');
             if isempty(readNPYPath)
                 fprintf('readNPY was not found, trying to add to path please add it to the matlab path and run again\n');
@@ -530,7 +541,7 @@ classdef (Abstract) dataRecording < handle
             currentIdx=0;prevCh=-1;
             nClusters=numel(clusterTable.ch);
             for i=1:nClusters
-                t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))';
+                t{i}=spike_times(spike_clusters==clusterTable.id(i))';
                 ic(1,i)=clusterTable.ch(i);
                 ic(3,i)=currentIdx+1;
                 ic(4,i)=currentIdx+numel(t{i});
@@ -543,8 +554,6 @@ classdef (Abstract) dataRecording < handle
                 currentIdx=ic(4,i);
             end
             t=double(cell2mat(t))/(obj.samplingFrequency(1)/1000);
-            saveFileAll=[pathToPhyResults filesep 'sorting_tIc_All.mat'];
-            saveFileValid=[pathToPhyResults filesep 'sorting_tIc.mat'];
 
             if nargin==3
                 t=t+tStart;
@@ -559,15 +568,9 @@ classdef (Abstract) dataRecording < handle
             [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
             save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
             
-            if nargout>0
-                spkData.t=t;
-                spkData.ic=ic;
-                spkData.label=label;
-                spkData.spikeShapes=spikeShapes;
-                spkData.neuronAmp=neuronAmp;
-                spkData.nSpks=nSpks;
+            if nargout==1 %if output is needed and calculation was needed (no saved file existing).
+                spkData=load(saveFileValid);
             end
-            
         end
         
         function []=convertLayoutKSort(obj,outputFile,badChannels)
@@ -763,7 +766,8 @@ classdef (Abstract) dataRecording < handle
             end
             [folderName,FileName]=fileparts(targetFile);
             if ~isfolder(folderName)
-                disp('Notice the input folder does not exist. Please create and run again');
+                fprintf('Notice the folder you entered does not exist!\nCreating folder: %s\n',folderName);
+                mkdir([folderName filesep 'spikeSorting']);
             end
             chunkSize=2*60*1000; %msec
             startTimes=0:chunkSize:obj.recordingDuration_ms;
@@ -931,7 +935,7 @@ classdef (Abstract) dataRecording < handle
                     end
                 else
                     if ~isdir(obj.recordingDir)
-                        error('Object was not constructed since no valid folder was choosen');
+                        error('Object was not constructed since no valid folder of file name were choosen!!!');
                     end
                 end
             else %if directory with data was not entered open get directory GUI

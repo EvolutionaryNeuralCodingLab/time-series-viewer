@@ -98,7 +98,6 @@ classdef NPAPRecording < dataRecording
         
         function obj=extractMetaData(obj)
             fprintf('Extracting meta data from: %s...\n',obj.recordingDir);
-          
             disp('saving meta data');
             obj.saveMetaData;
         end

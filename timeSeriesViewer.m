@@ -368,7 +368,8 @@ end
     function addSyncVideo(hObj,event)
         if isempty(AVG.hVideoSyncFigure.hFigure) || ~isvalid(AVG.hVideoSyncFigure.hFigure)
             AVG.hVideoSyncFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.4 AVG.hMainFigure.scrsz(4)*0.4 AVG.hMainFigure.scrsz(3)*0.58 AVG.hMainFigure.scrsz(4)*0.48], ...
-                'Name','Activity viewer - video sync', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','none', 'HandleVisibility','off','CloseRequestFcn',@closeSyncedVideoFigure);
+                'Name','Activity viewer - video sync', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','figure', 'HandleVisibility','off','CloseRequestFcn',@closeSyncedVideoFigure);
+            %To make the zoom toolbar not visible change 'Toolbar' to 'none'
             
             % Arrange the main interface windows
             AVG.hVideoSyncFigure.hMainVBox = uix.VBox('Parent',AVG.hVideoSyncFigure.hFigure, 'Spacing',3, 'Padding',1);
@@ -376,8 +377,9 @@ end
             AVG.hVideoSyncFigure.hVideoPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Video');
             set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-1 -10]);
             
-            AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel);
-            AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
+            AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel,'Position',[0.025 0.025 0.95 0.95]);
+            %AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
+            %hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
 
             AVG.hVideoSyncFigure.hButttonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hButttonPanel, 'Spacing',4, 'Padding',2);
             AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push', 'String','Load','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
@@ -485,15 +487,19 @@ end
                 return;
             end
             hTmp=line(AVG.hMainFigure.hMainAxis,[0 0],AVG.hMainFigure.hMainAxis.YLim,'color','r');
+            hold(AVG.hVideoSyncFigure.hVideoAxis,'on');
+            set(AVG.hVideoSyncFigure.hVideoAxis,'nextplot','replacechildren');
             AVG.Params.videoReader.CurrentTime = pFrames(1)/AVG.Params.frameRate;
             for frames=1:nActFrames
                 frameVid=AVG.Params.videoReader.readFrame; %generalize to grey scale video.
+                %image(frameVid,'Parent',AVG.hVideoSyncFigure.hVideoAxis);
                 imshow(frameVid,'Parent',AVG.hVideoSyncFigure.hVideoAxis);
                 tmpTime=AVG.Params.triggerFrameSync(pFrames(frames))-AVG.Params.startTime;
                 hTmp.XData=[tmpTime tmpTime];
                 drawnow nocallbacks;
             end
             delete(hTmp);
+            hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
         else
             msgbox('Triggers not synced to video, run sync first','Attention','error','replace');
         end
