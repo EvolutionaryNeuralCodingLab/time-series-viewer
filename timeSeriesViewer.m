@@ -311,6 +311,9 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% General GUI Callbacks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function closeMainGUIFigure(hObj,event)
+        if ishandle(AVG.hVideoSyncFigure.hFigure)
+            close(AVG.hVideoSyncFigure.hFigure); %using close evokes the close request function and is better than delete()
+        end
         delete(AVG.plotData);
         delete(AVG.hMainFigure.hFigure);
         clear AVG;
@@ -337,7 +340,7 @@ end
         updatePlot;
     end
     function CallbackExportPlotPush(hObj,Event)
-        cmap=get(AVG.hMainFigure.hFigure,'colormap');
+        cmap=get(AVG.hMainFigure.hMainAxis,'colormap');
         hNewFig=figure('Position',[10 65 1700 940]);
         copyobj(AVG.hMainFigure.hMainAxis,hNewFig);
         
@@ -454,7 +457,7 @@ end
         if AVG.Params.videoSyncVerified
             pFrames=find(AVG.Params.triggerFrameSync>AVG.Params.startTime & AVG.Params.triggerFrameSync<(AVG.Params.startTime+AVG.Params.window));
             nActFrames=numel(pFrames);
-            nFrames=AVG.Params.window/AVG.Params.frameRate;
+            nFrames=AVG.Params.window/1000*AVG.Params.frameRate;
             if nActFrames<nFrames-1 %can happen if the there is no video (of full video during the relevant times
                 msgbox(['Missing frames in segment! video exists between ' num2str(AVG.Params.triggerFrameSync(1)) ' - ' num2str(AVG.Params.triggerFrameSync(end))],'Attention','error','replace');
                 return;
@@ -531,7 +534,7 @@ end
     function initializeNewRecording
         set(AVG.hGen.messageBox, 'string','Initializing new data','ForegroundColor','r');
         initializeViewer;
-        if exist(AVG.hVideoSyncFigure.hFigure,'var') && isvalid(AVG.hVideoSyncFigure.hFigure)
+        if ishandle(AVG.hVideoSyncFigure.hFigure)
             close(AVG.hVideoSyncFigure.hFigure); %using close evokes the close request function and is better than delete()
         end
         AVG.plotData.refreshPlot=1;

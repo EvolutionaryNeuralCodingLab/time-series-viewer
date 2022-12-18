@@ -212,6 +212,9 @@ classdef binaryRecording < dataRecording
                 obj.channelNumbers=T.channelNumbers;
                 obj.channelNames=cellfun(@(x) num2str(x),mat2cell(obj.channelNumbers,1,ones(1,numel(obj.channelNumbers))),'UniformOutput',0);
                 if isfield(T,'vcProbe')
+                    if numel(T.vcProbe)<7
+                        error('Probe name should have the prefix "Layout_". Please correct and run again.');
+                    end
                     if strcmp(T.vcProbe(1:7),'Layout_')
                         obj=obj.loadChLayout(T.vcProbe(8:end));%remove the layout ending
                     else

@@ -256,7 +256,7 @@ classdef (Abstract) dataRecording < handle
                     elecString=regexp(allElectrodes{i},'_','split');
                     electrodePitch(i)=str2num(elecString{1});
                     
-                    load(['layout_' allElectrodes{i}]);
+                    load(['layout_' allElectrodes{i} '.mat']);
                     chLayoutNumbers=[obj.chLayoutNumbers;En+lastElectrode];
                     chLayoutNames=[obj.chLayoutNames;Ena];
                     chLayoutPositions=[obj.chLayoutPositions,[Enp(1,:);Enp(2,:)+max(Enp(2,:))+200]];
@@ -399,17 +399,11 @@ classdef (Abstract) dataRecording < handle
             
             if par.useKiloSort3
                 if ~exist('rezSpk','var') || par.overwrite==true
+                    
+                    %Adding a try catch inside extract_spikes arround st(5,:) = cF; in
+                    %the function extract_spikes in the folder clustering of
+                    %kilosort seems to solve the problem of crashing during execution
                     [rezSpk, st3, tF]     = extract_spikes(rezShift);
-                    %{
-                    Adding the following lines instead of st(5,:) = cF; in
-                    the function extract_spikes in the folder clustering of
-                    kilosort seems to solve the problem
-                        try %Mark Shein-Idelson 4/3/21 - prevent wierd bug in which running "st(5,:) = cF;" results in an error
-                            st(5,:) = cF;
-                        catch
-                            st(5,:) = cF;
-                        end
-                    %}
                     save(tmpSaveFile,'rezSpk','st3','tF','-append')
                 else
                     disp('Spike extraction loaded from last saved version');
