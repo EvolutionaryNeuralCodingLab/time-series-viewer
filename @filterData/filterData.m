@@ -14,6 +14,7 @@ classdef filterData
         highPassPassCutoff=[];
         highPassCutoff=[];%low-pass cutoff frequency - for use with butterworth
         lowPassCutoff=[];%high-pass cutoff frequency - for use with butterworth
+        hilbertBand=[];%the band gap for hilbert filter
         upSamplingFactor=[]; %up sampling factor for decimation
         currentDesignedFilter=[];
         filteredSamplingFrequency=[];
@@ -163,6 +164,21 @@ classdef filterData
             
             %obj.dF=fdesign.decimator(downSamplingFactor,'lowpass','N,F3db',obj.filterOrder,CutOffFreq,obj.samplingFrequency);
         end
+        
+        function [obj]=designHilbert(obj)
+            %design downsampling filter
+            %Usage: [DS]=DS.designHilbert()
+            %Output: DS - the down sampling filter object
+            obj.filterOrder=60;
+            obj.hilbertBand=400;
+            obj.currentDesignedFilter='hilbert';
+            obj.filteredSamplingFrequency=obj.samplingFrequency;
+            obj.vars={'N,TW',obj.filterOrder,obj.hilbertBand};
+            obj.dF=fdesign.(obj.currentDesignedFilter)(obj.vars{:},obj.samplingFrequency);
+            obj.F=design(obj.dF,'equiripple','SystemObject',true);
+            [obj.SOS_b,obj.G_a]=tf2sos(obj.F.Numerator,1);
+        end
+        
         function filterDesigns=getDesigns(obj)
             filterDesigns = designmethods(obj.dF);
         end
@@ -219,6 +235,12 @@ classdef filterData
                     [fData(:)] = filtfilt(obj.SOS_b, obj.G_a, shiftdim(Data,2))';
                 end
                 
+                if strcmp(obj.currentDesignedFilter,'hilbert')
+                    fData=Data(:,:,1:end-(obj.filterOrder/2))+1j*fData(:,:,(obj.filterOrder/2)+1:end);
+                    %plot(squeeze(Data(:,:,1:end-(obj.filterOrder/2))));hold on;
+                    %plot(squeeze(fData(:,:,(obj.filterOrder/2)+1:end)))
+                end
+                
                 if obj.padding
                     nSamples=nSamples-2*paddSamp;
                     fData=fData(:,:,(paddSamp+1):(paddSamp+nSamples));
@@ -227,6 +249,9 @@ classdef filterData
                 if ~isempty(obj.downSamplingFactor)
                     fData=fData(:,:,1:obj.downSamplingFactor:nSamples);
                 end
+                
+
+                
                 if nargout==2
                     T_ms=(1:size(fData,3))*(1e3/obj.filteredSamplingFrequency);
                 end

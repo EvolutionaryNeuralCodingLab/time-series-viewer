@@ -37,6 +37,7 @@ classdef OERecording < dataRecording
         blkBytesEvnt
         
         softwareVersion
+        openEphyXMLData
         
         allTimeStamps
         globalStartTime_ms
@@ -285,67 +286,51 @@ classdef OERecording < dataRecording
             %get channel information
             channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
             channelFiles={channelFiles.name};
-            
-            channelNamesAll=cellfun(@(x) regexp(x,['[A-Z]+\d+'],'match'),channelFiles,'UniformOutput',0);
-            if all(cellfun(@(x) isempty(x),channelNamesAll))
-                fprintf('The expected file format 100_CHX.continous was not found. Trying the format 100_X.continous...\n');
-                channelNamesAll=cellfun(@(x) regexp(x,['_\d+'],'match'),channelFiles,'UniformOutput',0);
-                if all(cellfun(@(x) isempty(x),channelNamesAll))
-                    error('The data filename format is not familiar to the OERecording class, please check that the files were saved in the right format or change filenames');
+
+            tmpStr=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
+            recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
+            channelNamesAll=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
+            channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
+            channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
+                
+            %get data from xml file
+            if exist([obj.recordingDir filesep 'settings.xml'],'file')
+                obj.openEphyXMLData = readstruct([obj.recordingDir filesep 'settings.xml']);
+                processorNames={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR.pluginNameAttribute};
+                pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
+                settingNames={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
+
+                if numel(settingNames)~=numel(channelNumbersAll)
+                    fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
                 end
-%                 channelNamesAll=cellfun(@(x) ['CH' x{1}(2:end)],channelNamesAll,'UniformOutput',0);
-                % specify analog channels
-                settingFile = fileread([obj.recordingDir filesep 'settings.xml']);
-                sectionStart = regexp(settingFile,['<CHANNEL_INFO>'])';
-                sectionEnd = regexp(settingFile,['</CHANNEL_INFO>'])';
-                section = settingFile(sectionStart:sectionEnd);
-                %ADC
-                [lineStart,lineEnd] = regexp(section,['name=' char(34) 'ADC\d*' char(34) ' number=' char(34) '\d*' char(34) ]);
-                if ~isempty(lineStart)
-                    for c=1:length(lineEnd)
-                        lineSec = section(lineEnd(c)-2:lineEnd(c)-1);
-                        Number = str2num(lineSec(regexp(lineSec,'\d')))+1;
-                        cNA_index = cellfun(@(x) strcmp(x{1}(2:end),num2str(Number)),channelNamesAll);
-                        channelNamesAll{cNA_index}{1}=['AD' channelNamesAll{cNA_index}{1}(2:end)];
-                    end
-                end
-                %AUX
-                [lineStart,lineEnd] = regexp(section,['name=' char(34) 'AUX\d*' char(34) ' number=' char(34) '\d*' char(34) ]);
-                if ~isempty(lineStart)
-                    for c=1:length(lineEnd)
-                        lineSec = section(lineEnd(c)-2:lineEnd(c)-1);
-                        Number = str2num(lineSec(regexp(lineSec,'\d')))+1;
-                        cNA_index = cellfun(@(x) strcmp(x{1}(2:end),num2str(Number)),channelNamesAll);
-                        channelNamesAll{cNA_index}{1}=['AU' channelNamesAll{cNA_index}{1}(2:end)];
-                    end
-                end
-                %CH
-                [lineStart,lineEnd] = regexp(section,['name=' char(34) 'CH\d*' char(34) ' number=' char(34) '\d*' char(34) ]);
-                for c=1:length(lineEnd)
-                    lineSec = section(lineEnd(c)-2:lineEnd(c)-1);
+                pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
+                pCh=cellfun(@(x) x(1:2)=="CH" | x(1:2)=="AD",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
+
+            else
+                error("settings.xml file does not exist!!!");
+            end
+            %{
+            % specify analog channels
+            settingFile = fileread([obj.recordingDir filesep 'settings.xml']);
+            sectionStart = regexp(settingFile,['<CHANNEL_INFO>'])';
+            sectionEnd = regexp(settingFile,['</CHANNEL_INFO>'])';
+            section = settingFile(sectionStart+numel('<CHANNEL_INFO>'):sectionEnd-3);
+            if ~isempty(lineStart)
+                for i=1:length(lineEnd)
+                    lineSec = section(lineEnd(i)-2:lineEnd(i)-1);
                     Number = str2num(lineSec(regexp(lineSec,'\d')))+1;
                     cNA_index = cellfun(@(x) strcmp(x{1}(2:end),num2str(Number)),channelNamesAll);
-                    channelNamesAll{cNA_index}{1}=['CH' channelNamesAll{cNA_index}{1}(2:end)];
+                    channelNamesAll{cNA_index}{1}=['AD' channelNamesAll{cNA_index}{1}(2:end)];
                 end
-                channelNumbersAll=cellfun(@(x) str2double(x{1}(3:end)),channelNamesAll,'UniformOutput',1);
             else
-                channelNamesAll=cellfun(@(x) x{1},channelNamesAll,'UniformOutput',0);
-                channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
+                error('Could not read settings.xml file!!!')
             end
-            
-            %find channel types analog ch / electrode ch - Changed on 11/7/22 to the lower lines - consider changing back if a problem occurs.
-            try
-                pCh=cellfun(@(x) mean(x{1}([1 2])=='CH')==1,channelNamesAll);
-                pAnalogCh=cellfun(@(x) mean(x{1}([1 2])=='AU')==1 || mean(x{1}([1 2])=='AD')==1,channelNamesAll);
-            catch ME
-                pCh=cellfun(@(x) mean(x([1 2])=='CH')==1,channelNamesAll);
-                pAnalogCh=cellfun(@(x) mean(x([1 2])=='AU')==1 || mean(x([1 2])=='AD')==1,channelNamesAll);
-            end
-            
-            
+
+            %}
+
             obj.channelFilesAnalog=channelFiles(pAnalogCh);
             obj.channelFiles=channelFiles(pCh);
-            
+
             obj.channelNumbers=channelNumbersAll(pCh);
             obj.analogChannelNumbers=channelNumbersAll(pAnalogCh);
             
