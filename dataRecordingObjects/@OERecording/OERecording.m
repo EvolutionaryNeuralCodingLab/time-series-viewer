@@ -78,6 +78,9 @@ classdef OERecording < dataRecording
             if isempty(channels) %if no channels are entered, get all channels
                 channels=obj.channelNumbers;
             end
+            if ~all(ismember(channels,obj.channelNumbers))
+                error('The entered channel number does not exist in the recording!');
+            end
             nCh=numel(channels);
             
             V_uV=zeros(windowSamples,nWindows,nCh,obj.blkCont(4).Types); %initialize waveform matrix
@@ -280,7 +283,7 @@ classdef OERecording < dataRecording
         
         function obj=extractMetaData(obj)
             
-            fprintf('Extracting meta data from: %s...\n',obj.recordingDir);
+            fprintf('\nExtracting meta data from: %s...',obj.recordingDir);
             obj.eventFiles=dir([obj.recordingDir filesep '*.' obj.eventFileExtension]);
             
             %get channel information
@@ -410,7 +413,7 @@ classdef OERecording < dataRecording
             if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), disp('Error!!! Some blocks are missing in recording'),end;
             
             %check that all records have 1024 samples (data integrity check)
-            disp('Checking integrity of all records in ch1...');
+            disp('\nChecking integrity of all records in ch1...');
             fseek(obj.fid(1), obj.headerSizeByte+obj.blkBytesCont(1), 'bof');
             sampleNumbers = fread(obj.fid(1), obj.nRecordsCont*obj.blkCont(2).Repeat, sprintf('%d*%s', obj.blkCont(2).Repeat,obj.blkCont(2).Types), obj.bytesPerRecCont - obj.blkBytesCont(2), 'l');
             if ~all(sampleNumbers == obj.dataSamplesPerRecord) && obj.version >= 0.1, error('Found currupted records!!! Please check manually'); end

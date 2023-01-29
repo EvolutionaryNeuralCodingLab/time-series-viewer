@@ -685,15 +685,18 @@ classdef (Abstract) dataRecording < handle
             end
         end
         
-        function convert2Binary(obj,targetFile,dataChannels,newChannelNumbers,medianFilterGroup)
+        function convert2Binary(obj,targetFile,dataChannels,newChannelNumbers,timeLimitsMs,medianFilterGroup)
             tic;
             targetDataType='int16';
-            if nargin<5
+            if nargin<6
                 medianFilterGroup=[];
             else
                 for i=1:numel(medianFilterGroup)
                     [~,pGroup{i}]=intersect(dataChannels,medianFilterGroup{i});
                 end
+            end
+            if nargin<5
+                timeLimitsMs=[];
             end
             
             switch obj.datatype
@@ -764,9 +767,13 @@ classdef (Abstract) dataRecording < handle
                 mkdir([folderName filesep 'spikeSorting']);
             end
             chunkSize=2*60*1000; %msec
-            startTimes=0:chunkSize:obj.recordingDuration_ms;
-            endTimes=[startTimes(2:end) obj.recordingDuration_ms];
-            
+            if isempty(timeLimitsMs)
+                startTimes=0:chunkSize:obj.recordingDuration_ms;
+                endTimes=[startTimes(2:end) obj.recordingDuration_ms];
+            else
+                startTimes=timeLimitsMs(1):chunkSize:(timeLimitsMs(2)-chunkSize);
+                endTimes=[startTimes(2:end) timeLimitsMs(2)];
+            end
             if ~exist(targetFile,'file')
                 %open data file
                 fid = fopen(targetFile, 'w+');

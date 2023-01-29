@@ -255,6 +255,11 @@ classdef binaryRecording < dataRecording
                 disp('Object was not constructed since too many parameters were given at construction');
                 return;
             end
+            if isstr(recordingFile)
+                tmp=recordingFile;
+                clear recordingFile;
+                recordingFile{1}=tmp;
+            end
             if ~any(strcmp(recordingFile{1}(end-2:end),{'bin','dat'}))
                 warning('Recording file is not given, this may create errors, please provide a *.bin filename');
             end
