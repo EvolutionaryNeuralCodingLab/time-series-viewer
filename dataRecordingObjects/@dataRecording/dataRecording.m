@@ -5,7 +5,8 @@ classdef (Abstract) dataRecording < handle
         dataFileNames % (Cell 1 x N)  array of N recording data file names
         startDate %(1x1) Start date (time) of Recording (matlab date number format)
         endDate %(1x1) End date (time) of Recording (matlab long format)
-        samplingFrequency %(1xN) Sampling rate [Hz]
+        samplingFrequency %(1xN) Sampling rate of electrode signals [Hz]
+        samplingFrequencyAnalog %(1xN) Sampling rate of analog signals [Hz]
         recordingDuration_ms %(1x1) the total duration of the recording in [ms]
         channelNames % (Cell 1xN) a cell array with the N names of the channels
         channelNumbers % (1xN) an array with integer channel numbers (>=1 integer)
@@ -21,8 +22,10 @@ classdef (Abstract) dataRecording < handle
         layoutName %the name of the channel layout (electrode type)
         
         convertData2Double = 1; % if data should be converted to double from the original quantization
-        ZeroADValue % the digital zero value
-        MicrovoltsPerAD % the digital to analog conversion value
+        ZeroADValue % the digital zero value fir electrode channels
+        MicrovoltsPerAD % the digital to analog conversion value for electrode channels
+        MicrovoltsPerADAnalog % the digital to analog conversion value for analog channels
+        ZeroADValueAnalog% the digital zero value for analog channels
         datatype        % class of data in the recording
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -230,6 +233,7 @@ classdef (Abstract) dataRecording < handle
                 end
                 fprintf('Using the file %s for extracting channel map\n',chMapFiles);
             else
+                if ~isempty(layoutName)
                 %Convert to cell array
                 if ~iscell(layoutName)
                     layoutName={layoutName};
@@ -237,6 +241,10 @@ classdef (Abstract) dataRecording < handle
                 %remove the layout prefix if entered
                 if all(layoutName{1}(1:7)=='layout_')
                     layoutName{1}=layoutName{1}(8:end);
+                end
+                else
+                    warning('Provided layout name is empty! Layout not updated!')
+                    return;
                 end
             end
             
@@ -685,33 +693,77 @@ classdef (Abstract) dataRecording < handle
             end
         end
         
-        function convert2Binary(obj,targetFile,dataChannels,newChannelNumbers,timeLimitsMs,medianFilterGroup)
-            tic;
-            targetDataType='int16';
-            if nargin<6
-                medianFilterGroup=[];
+        function convert2Binary(obj,targetFileBase,varargin)
+            %Converts recording data to a simple binary format. 
+
+            %parsing input variables
+            parseObj = inputParser;
+            addRequired(parseObj,'targetFileBase');
+            addParameter(parseObj,'electrodeCh',obj.channelNumbers); %the electrode channel numbers to extract
+            addParameter(parseObj,'analogCh',obj.analogChannelNumbers);%the analog channel numbers to extract
+            addParameter(parseObj,'newElectrodeChNumbers',[]);%the new electrode channel numbers in the generated binary file
+            addParameter(parseObj,'newAnalogChNumbers',[]);%the new analog channel numbers in the generated binary file
+            addParameter(parseObj,'timeLimitsMs',[],@isnumeric);%[2 X N] - a vector with start and end times to extract [ms] - if N>2 combines together a few segments 
+            addParameter(parseObj,'targetDataType','int16',@isstring); %class of electrode/analog data sample
+            addParameter(parseObj,'chunkSize',2*60*1000,@isnumeric); %msec
+            addParameter(parseObj,'medianFilterGroup',[],@iscell);% {1 X N} - cell array of groups of electrode channel numbers for calculating joint median (if empty, does not filter)
+            addParameter(parseObj,'inputParams',false,@isnumeric);
+            parseObj.parse(targetFileBase,varargin{:});
+            if parseObj.Results.inputParams %if true, plots all possible input params to the function
+                disp(parseObj.Results);
+                return;
+            end
+            par=parseObj.Results;  %make parameter structure
+
+            %find orginal file recording name and directory
+            %{
+            if iscell(obj.recordingDir)
+                recordingDir=obj.recordingDir{1};
+                recordingName = strjoin(cellfun(@(x) x(1:end-3), obj.dataFileNames,'UniformOutput',false),'-');
             else
-                for i=1:numel(medianFilterGroup)
-                    [~,pGroup{i}]=intersect(dataChannels,medianFilterGroup{i});
+                recordingDir=obj.recordingDir;
+                recordingName = obj.recordingName;
+            end
+            %}
+            %Using default file name if an empty target is entered.
+            if isempty(targetFileBase)
+                if isempty(obj.recordingName)
+                    targetFileBase=[obj.recordingDir filesep 'binaryRec.bin'];
+                else
+                    targetFileBase=[obj.recordingDir filesep obj.recordingName '.bin'];
                 end
+                fprintf('Target file name not entered! Using this: %s\n',targetFileBase);
             end
-            if nargin<5
-                timeLimitsMs=[];
+            %Verify that target extension is "bin" or "dat"
+            if ~any(strcmp(targetFileBase(end-3:end),{'.dat','.bin'}))
+                error('input file should have a ''.dat/.bin'' extension');
             end
-            
+            %Verifys that the target file does not exist to not overwrite files.
+            if exist(targetFileBase,'file')
+                disp('The chosed file name already exists!!!! please delete data first and run again!');
+                return;
+            end
+            %create a folder if target folder does not exist
+            [folderName,FileName]=fileparts(targetFileBase);
+            if ~isfolder(folderName)
+                fprintf('Notice the folder you entered does not exist!!! Creating new folder: %s\n',folderName);
+                mkdir(folderName);
+            end
+
+            %determine conversion scheme based on the target file data class
             switch obj.datatype
-                case targetDataType
-                   zeroValue=0;
-                   convertDataType=false; %switch from uint to int
-                   convertTo16=false; %switch from 32int to 16int
-                   useDouble=false; %other unknown type, us the data converted first to uV
+                case par.targetDataType
+                    zeroValue=0;
+                    convertDataType=false; %switch from uint to int
+                    convertTo16=false; %switch from 32int to 16int
+                    useDouble=false; %other unknown type, us the data converted first to uV
                 case 'uint16'
-                   fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
-                   bits=16;
-                   zeroValue=2^bits/2;
-                   convertDataType=true;
-                   convertTo16=false;
-                   useDouble=false;
+                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
+                    bits=16;
+                    zeroValue=2^bits/2;
+                    convertDataType=true;
+                    convertTo16=false;
+                    useDouble=false;
                 case 'int32'
                     fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
                     zeroValue=0;
@@ -728,141 +780,208 @@ classdef (Abstract) dataRecording < handle
                 otherwise
                     useDouble=true;
             end
-            
-%           if ~strcmp(obj.datatype,targetDataType)
-%                 fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!',obj.datatype,targetDataType);
-%                 zeroValue=2^16/2;
-%                 convertDataType=true;
-%             else
-%                 zeroValue=0;
-%                 convertDataType=false;
-%             end
-            
-            if iscell(obj.recordingDir)
-               recordingDir=obj.recordingDir{1};
-               recordingName = strjoin(cellfun(@(x) x(1:end-3), obj.dataFileNames,'UniformOutput',false),'-');
-            else 
-                recordingDir=obj.recordingDir;
-                recordingName = obj.recordingName;
-            end
-            
-            %converts data recording object to kilo sort binary format for sorting
-            if nargin<3
-                dataChannels=obj.channelNumbers;
-            end
-            if nargin<4
-                newChannelNumbers=dataChannels;
-            end
 
-            if nargin<2 || isempty(targetFile)
-                targetFile=[recordingDir filesep recordingName '.bin'];
-                disp(['File name for binary is:' targetFile]);
-            end
-            if ~any(strcmp(targetFile(end-3:end),{'.dat','.bin'}))
-                error('input file should have a ''.dat/.bin'' extension');
-            end
-            [folderName,FileName]=fileparts(targetFile);
-            if ~isfolder(folderName)
-                fprintf('Notice the folder you entered does not exist!\nCreating folder: %s\n',folderName);
-                mkdir([folderName filesep 'spikeSorting']);
-            end
-            chunkSize=2*60*1000; %msec
-            if isempty(timeLimitsMs)
-                startTimes=0:chunkSize:obj.recordingDuration_ms;
+            %Determine start and end of each processing chunk
+            if isempty(par.timeLimitsMs)
+                startTimes=0:par.chunkSize:obj.recordingDuration_ms;
                 endTimes=[startTimes(2:end) obj.recordingDuration_ms];
             else
-                startTimes=timeLimitsMs(1):chunkSize:(timeLimitsMs(2)-chunkSize);
-                endTimes=[startTimes(2:end) timeLimitsMs(2)];
+                %checks that the format of timeLimitsMs is correct and converts it if possible or gives an error.
+                nTimeBlocks=size(par.timeLimitsMs);
+                if nTimeBlocks(1)>2
+                    error('The timeLimitsMs should be of size [2 x N] - where N is the number of chuncks!');
+                elseif nTimeBlocks(1)==1
+                    par.timeLimitsMs=par.timeLimitsMs';
+                end
+                %calculate start and end times for all sessions.
+                startTimes=[];endTimes=[];
+                for i=1:size(par.timeLimitsMs,2)
+                    if par.timeLimitsMs(2,i)>=par.chunkSize
+                        tmpStart=par.timeLimitsMs(1,i):par.chunkSize:(par.timeLimitsMs(2,i)-par.chunkSize);
+                    else
+                        tmpStart=par.timeLimitsMs(1,i);
+                    end
+                    startTimes=[startTimes tmpStart];
+                    endTimes=[endTimes tmpStart(2:end) par.timeLimitsMs(2,i)];
+                end
             end
-            if ~exist(targetFile,'file')
-                %open data file
-                fid = fopen(targetFile, 'w+');
-                
-                tempConvertData2Double=obj.convertData2Double;
+
+            %check channel numbers
+            if isempty(par.electrodeCh)
+                electrodeCh=obj.channelNumbers;
+            else
+                electrodeCh=par.electrodeCh;
+            end
+            if isempty(par.analogCh)
+                analogCh=obj.analogChannelNumbers;
+            else
+                analogCh=par.analogCh;
+            end
+            nAnalog=numel(analogCh);
+
+            if ~isempty(par.newElectrodeChNumbers)
+                if numel(par.newElectrodeChNames)~=numel(electrodeCh)
+                    error('The number of new electrode channels and original electrode channels should be equal!!!');
+                end
+            else
+                par.newElectrodeChNumbers=electrodeCh;
+            end
+            if ~isempty(par.newAnalogChNumbers)
+                if numel(par.newAnalogChNumbers)~=numel(analogCh)
+                    error('The number of new analog channels and original analogf= channels should be equal!!!');
+                end
+            else
+                par.newAnalogChNumbers=analogCh;
+            end
+
+            %check if to plot all possible input params.
+            for i=1:numel(par.medianFilterGroup)
+                [~,pGroup{i}]=intersect(electrodeCh,par.medianFilterGroup{i});
+            end
+
+            %start extracting data
+            tic;
+
+            %open data files
+            fid = fopen(targetFileBase, 'w+');
+            if nAnalog>0
+                fidA = fopen([targetFileBase(1:end-4) '_Analog.bin'], 'w+');
+            else
+                fidA=[];
+            end
+
+            try
+                %verify that dataRecording property is set such that all data in converted to double upon extraction
+                tempConvertData2Double=obj.convertData2Double; %loads data in double format
                 obj.convertData2Double=useDouble;
-                
-                fprintf('\nConverting blocks to binary %s format(/%d) : ',targetDataType,numel(startTimes));
+
+                fprintf('\nConverting blocks to binary %s format(/%d) : ',par.targetDataType,numel(startTimes));
                 nDigits=0;
                 for j=1:numel(startTimes)
                     fprintf([repmat('\b',1,nDigits) '%d'],j);nDigits=length(num2str(j));
                     if ~useDouble
                         if ~convertDataType
-                            data=squeeze(obj.getData(dataChannels,startTimes(j),endTimes(j)-startTimes(j)));
+                            data=squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j)));
+                            if nAnalog>0
+                                dataAnalog=squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j)));
+                            end
                             if convertTo16 %data is 32bit,convert to 16 with saturation
                                 saturation=32767; %2^15 -1 maximal value of 16bit
                                 data(data>saturation)=saturation;
                                 data(data<(-saturation))=-saturation;
                                 data=int16(data);
+                                if nAnalog>0
+                                    dataAnalog(dataAnalog>saturation)=saturation;
+                                    dataAnalog(dataAnalog<(-saturation))=-saturation;
+                                    dataAnalog=int16(dataAnalog);
+                                end
                             end
                         else %convert from uint to int
                             if ~convertTo16
-                                data=int16(int32(squeeze(obj.getData(dataChannels,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                data=int16(int32(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                if nAnalog>0
+                                    dataAnalog=int16(int32(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                end
                             else
                                 %convert to signed
-                                data=int32(int64(squeeze(obj.getData(dataChannels,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
-                                %convert to 16 w saturation
                                 saturation=32767; %2^15 -1 maximal value of 16bit
+                                data=int32(int64(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                %convert to 16 w saturation
                                 data(data>saturation)=saturation;
                                 data(data<(-saturation))=-saturation;
                                 data=int16(data);
-                            end    
+
+                                if nAnalog>0
+                                    dataAnalog=int32(int64(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                    dataAnalog(dataAnalog>saturation)=saturation;
+                                    dataAnalog(dataAnalog<(-saturation))=-saturation;
+                                    dataAnalog=int16(dataAnalog);
+                                end
+                            end
                         end
                     else %unknown data type - get data in uV and convert to 16bit
-                        data=squeeze(obj.getData(dataChannels,startTimes(j),endTimes(j)-startTimes(j)));
-                        data=(data+obj.ZeroADValue)/obj.MicrovoltsPerAD(1);
                         saturation=32767; %2^15 -1 maximal value of 16bit
+                        data=squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j)));
+                        data=(data+obj.ZeroADValue)/obj.MicrovoltsPerAD(1);
                         data(data>saturation)=saturation;
                         data(data<(-saturation))=-saturation;
                         data=int16(data);
+                        if nAnalog>0
+                            dataAnalog=squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j)));
+                            dataAnalog=(dataAnalog+obj.ZeroADValue)/obj.MicrovoltsPerADAnalog(1);
+                            dataAnalog(dataAnalog>saturation)=saturation;
+                            dataAnalog(dataAnalog<(-saturation))=-saturation;
+                            dataAnalog=int16(dataAnalog);
+                        end
                     end
-                    if ~isempty(medianFilterGroup)
-                        for i=1:numel(medianFilterGroup)
+                    %median filters are performed only on electrode channels (not on analog channels)
+                    if ~isempty(par.medianFilterGroup)
+                        for i=1:numel(par.medianFilterGroup)
                             data(pGroup{i},:)=bsxfun(@minus,data(pGroup{i},:),median(data(pGroup{i},:)));
                         end
                     end
                     pause(0.0001);
-                    fwrite(fid, data, ['*' targetDataType]);
+                    fwrite(fid, data, ['*' par.targetDataType]);
+                    if nAnalog>0
+                        fwrite(fidA, dataAnalog, ['*' par.targetDataType]);
+                    end
                 end
                 fclose(fid);
-                fprintf('\nConversion complete (binary %s)\n',targetDataType);
-                
+                fclose(fidA);
+                fprintf('\nConversion complete!\n');
                 obj.convertData2Double=tempConvertData2Double; %return value to what it was
-            else
-                disp('file already exists, please delete data first and run again!');
+
+            catch ME
+                fclose(fid);
+                fclose(fidA);
+                obj.convertData2Double=tempConvertData2Double; %return value to what it was
+                fprintf('Error in conversion! - closing files...\n');
+                rethrow(ME)
             end
-            
-            fprintf('Writing trigger file...\n');
+            %extracts trigger information
+            fprintf('\nConverting digital trigger file...\n');
             try
+                triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
+                fidD = fopen(triggerFile, 'w+');
                 T=obj.getTrigger;
                 nT=cellfun(@(x) numel(x),T);
                 pT=find(nT>0);
-                
-                triggerFile=[targetFile(1:end-4) '_Triggers.bin'];
-                fid = fopen(triggerFile, 'w+');
-                fwrite(fid,uint32(nT+1),'*uint32');
+
+                fwrite(fidD,uint32(nT+1),'*uint32');
                 for i=1:numel(pT)
-                    fwrite(fid, uint32(T{pT(i)}*obj.samplingFrequency(1)/1000)+1,'*uint32');
+                    fwrite(fidD, uint32(T{pT(i)}*obj.samplingFrequency(1)/1000)+1,'*uint32');
                 end
-                fclose(fid);
-            catch
+                fclose(fidD);
+            catch ME
+                fclose(fidD);
                 nT = [];
                 disp('No triggers found! Trigger file not created.\n');
+                rethrow(ME)
             end
             
-            metaDataFile=[targetFile(1:end-4) '_meta.txt'];
+            %generates meta data file
+            metaDataFile=[targetFileBase(1:end-4) '_meta.txt'];
             if ~exist(metaDataFile,'file')
-                fid=fopen(metaDataFile,'w');
-                fprintf(fid,'nSavedChans = %d\n',numel(dataChannels));
-                fprintf(fid,'sRateHz = %d\n',obj.samplingFrequency(1));
-                fprintf(fid,'nChans = %d\n',numel(dataChannels));
-                outputstr = ['%d' repmat(',%d', 1, numel(newChannelNumbers)-1)]; % replicate it to match the number of columns
-                fprintf(fid,['channelNumbers = ', outputstr, '\n'], newChannelNumbers);
-                fprintf(fid,'nTriggerChans = %d\n',numel(nT));
-                fprintf(fid,'nAnalogChans = %d\n',numel(obj.analogChannelNumbers));
-                fprintf(fid,'vcDataType = %s\n',targetDataType);
-                fprintf(fid,'scale = %.12f\n',obj.MicrovoltsPerAD(1));
-                fprintf(fid,'vcProbe = %s\n',obj.layoutName);
-                fclose(fid);
+                fidM=fopen(metaDataFile,'w');
+                fprintf(fidM,'nSavedChans = %d\n',numel(electrodeCh));
+                fprintf(fidM,'sRateHz = %d\n',obj.samplingFrequency(1));
+                fprintf(fidM,'sRateAnalogHz = %d\n',obj.samplingFrequencyAnalog(1));
+                fprintf(fidM,'nChans = %d\n',numel(electrodeCh));
+                outputstr = ['%d' repmat(',%d', 1, numel(par.newElectrodeChNumbers)-1)]; % replicate it to match the number of columns
+                fprintf(fidM,['channelNumbers = ', outputstr, '\n'], par.newElectrodeChNumbers);
+                outputstr = ['%d' repmat(',%d', 1, numel(par.newAnalogChNumbers)-1)]; % replicate it to match the number of columns
+                fprintf(fidM,['channelNumbersAnalog = ', outputstr, '\n'], par.newAnalogChNumbers);
+                fprintf(fidM,'nTriggerChans = %d\n',numel(nT));
+                fprintf(fidM,'nAnalogChans = %d\n',numel(obj.analogChannelNumbers));
+                fprintf(fidM,'vcDataType = %s\n',par.targetDataType);
+
+                fprintf(fidM,'scale = %.12f\n',obj.MicrovoltsPerAD(1));
+                fprintf(fidM,'zeroADValue = %.12f\n',obj.ZeroADValue(1));
+                fprintf(fidM,'scaleAnalog = %.12f\n',obj.MicrovoltsPerADAnalog(1));                
+                fprintf(fidM,'zeroADValueAnalog = %.12f\n',obj.ZeroADValueAnalog(1));
+
+                fprintf(fidM,'vcProbe = %s\n',obj.layoutName);
+                fclose(fidM);
             else
                 disp(['Meta data file: ' metaDataFile ' alreday exists!, please first delete']);
             end

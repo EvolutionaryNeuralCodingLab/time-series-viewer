@@ -108,7 +108,7 @@ classdef binaryRecording < dataRecording
             if isempty(channels) %if no channels are entered, get all channels
                 channels=obj.analogChannelNumbers;
             end
-            conversionFactor=1/1000*obj.samplingFrequency;
+            conversionFactor=1/1000*obj.samplingFrequencyAnalog;
             startTime_ms=round(startTime_ms*conversionFactor)/conversionFactor;
             window_ms=round(window_ms*conversionFactor)/conversionFactor;
             endTime_ms=startTime_ms+window_ms; %no need to conversion factor
@@ -140,7 +140,7 @@ classdef binaryRecording < dataRecording
             end
             
             if obj.convertData2Double
-                V_uV = (double(V_uV) - obj.ZeroADValue) * obj.MicrovoltsPerAD;
+                V_uV = (double(V_uV) - obj.ZeroADValueAnalog) * obj.MicrovoltsPerADAnalog;
             end
             
             if nargout==2
@@ -203,19 +203,27 @@ classdef binaryRecording < dataRecording
                     end
                 end
                 obj.samplingFrequency=T.sRateHz;
+                obj.samplingFrequencyAnalog=T.sRateAnalogHz;
                 obj.MicrovoltsPerAD=T.scale;
+                obj.MicrovoltsPerADAnalog=T.scaleAnalog;
+                obj.ZeroADValue=T.zeroADValue;
+                obj.ZeroADValueAnalog=T.zeroADValueAnalog;
                 obj.totalChannels=T.nChans;
                 obj.datatype=T.vcDataType;
                 obj.totalAnalogChannels=T.nAnalogChans;
                 obj.triggerNames=mat2cell(1:T.nTriggerChans,1,ones(1,T.nTriggerChans));
-                obj.analogChannelNumbers=1:T.nAnalogChans;
+                if isfield(T,'channelNumbersAnalog') %for legacy version when channelNumbersAnalog was not saved
+                    obj.analogChannelNumbers=1:T.nAnalogChans;
+                end
                 obj.channelNumbers=T.channelNumbers;
-                obj.channelNames=cellfun(@(x) num2str(x),mat2cell(obj.channelNumbers,1,ones(1,numel(obj.channelNumbers))),'UniformOutput',0);
+                obj.channelNames=cellfun(@(x) num2str(x),mat2cell(obj.channelNumbers,1,ones(1,numel(obj.channelNumbers))),'UniformOutput',0); %
+                obj.analogChannelNames=cellfun(@(x) num2str(x),mat2cell(obj.analogChannelNumbers,1,ones(1,numel(obj.analogChannelNumbers))),'UniformOutput',0);
+
                 if isfield(T,'vcProbe')
-                    if numel(T.vcProbe)<7
-                        error('Probe name should have the prefix "Layout_". Please correct and run again.');
-                    end
-                    if strcmp(T.vcProbe(1:7),'Layout_')
+                    %if numel(T.vcProbe)<7
+                    %    error('Probe name should have the prefix "Layout_". Please correct and run again.');
+                    %end
+                    if strcmp(T.vcProbe(1:min(7,numel(T.vcProbe))),'Layout_')
                         obj=obj.loadChLayout(T.vcProbe(8:end));%remove the layout ending
                     else
                         obj=obj.loadChLayout(T.vcProbe);%remove the layout ending
@@ -247,6 +255,7 @@ classdef binaryRecording < dataRecording
             obj.bytesPerSample=2;
             obj.multifileMode=false;
             obj.ZeroADValue=0;
+            obj.ZeroADValueAnalog=0;
             
             %get data files
             if nargin==0

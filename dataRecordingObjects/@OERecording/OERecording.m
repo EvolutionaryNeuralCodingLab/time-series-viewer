@@ -5,28 +5,26 @@ classdef OERecording < dataRecording
         eventFiles
         evntFileSize
         fileSize
-        fileSizeA
+        fileSizeAnalog
         
         n2sA
         fileHeaders
-        fileHeadersA
+        fileHeadersAnalog
         ADBitVolts
         recordSize
         
         sample_ms
         bufferSize;
-        bufferSizeA
+        bufferSizeAnalog
         blockLength;
-        blockLengthA;
-        MicrovoltsPerADA
-        samplingFrequencyA
+        blockLengthAnalog;
         
         startDateA
         blkCont
         nRecordsCont
         blkBytesCont
         dataDescriptionCont
-        dataDescriptionContA
+        dataDescriptionContAnalog
         bytesPerRecCont
         recordLength
         
@@ -205,13 +203,13 @@ classdef OERecording < dataRecording
             end
             
             if obj.convertData2Double
-                V_uV = permute(double(V_uV) * obj.MicrovoltsPerADA(1) *1e6 ,[3 2 1]); %*1e6 since units for analog channels are given in volts.
+                V_uV = permute(double(V_uV) * obj.MicrovoltsPerADAnalog(1) ,[3 2 1]);
             else
                 V_uV = permute(V_uV,[3 2 1]);
             end
             
             if nargout==2
-                t_ms=(1:windowSamples)*(1e3/obj.samplingFrequencyA(1));
+                t_ms=(1:windowSamples)*(1e3/obj.samplingFrequencyAnalog(1));
             end
         end
         
@@ -373,24 +371,26 @@ classdef OERecording < dataRecording
                 end
             end
             obj.sample_ms=1e3/obj.samplingFrequency(1);
-            
+            obj.ZeroADValue=zeros(size(obj.MicrovoltsPerAD));
+
             for i=1:numel(obj.channelFilesAnalog)
                 fseek(obj.fidA(i),0,'eof');
-                obj.fileSizeA(i)=ftell(obj.fidA(i));
+                obj.fileSizeAnalog(i)=ftell(obj.fidA(i));
                 
                 fseek(obj.fidA(i),0,'bof');
                 hdr = fread(obj.fidA(i), obj.headerSizeByte, 'char*1');
                 eval(char(hdr'));
                 
-                obj.samplingFrequencyA(i)=header.sampleRate;
-                obj.MicrovoltsPerADA(i)=header.bitVolts;
+                obj.samplingFrequencyAnalog(i)=header.sampleRate;
+                obj.MicrovoltsPerADAnalog(i)=header.bitVolts*1e6; %in open ephys the AD value for AUX channels is given in volts.
                 obj.startDateA{i}=header.date_created;
-                %obj.bufferSizeA(i)=header.bufferSize;
-                obj.blockLengthA(i)=header.blockLength;
-                obj.dataDescriptionContA{i}=header.description;
-                obj.fileHeadersA{i} = header;
+                %obj.bufferSizeAnalog(i)=header.bufferSize;
+                obj.blockLengthAnalog(i)=header.blockLength;
+                obj.dataDescriptionContAnalog{i}=header.description;
+                obj.fileHeadersAnalog{i} = header;
             end
-            
+            obj.ZeroADValueAnalog=zeros(size(obj.MicrovoltsPerADAnalog));
+
             %prepare data structures for continuous - assumes that all channels have the same size structure and time stamps, else run separetly on every file
             bStr = {'ts' 'nsamples' 'recNum' 'data' 'recordMarker'};
             bTypes = {'int64' 'uint16' 'uint16' 'int16' 'uint8'};
