@@ -8,6 +8,43 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
             %        t_ms - A time vector relative to recording start (t=0 at start)
 
 
+
+            %Implementation:
+    binName = string(obj.dataFileNames(contains(obj.dataFileNames,'nidq')));
+
+    path = obj.recordingDir;
+
+    meta = ReadMeta(binName, path);
+
+    chanList = channels;
+
+    nSamp = round((window_ms/1000)*str2double(meta.niSampRate));
+    
+    V_uV = zeros(length(channels),length(startTime_ms),nSamp);
+
+ 
+    for trials = 1:length(startTime_ms)
+
+        t0= startTime_ms(trials)/1000;
+        samp0 = round(t0*str2double(meta.niSampRate));
+    
+        dataArray = ReadBin(samp0, nSamp, meta, binName, path);
+        
+        dataArray = dataArray(chanList,:);
+
+         if obj.convertData2Double
+             V_uV(:,trials,:) = GainCorrectNI(dataArray, chanList, meta); %convert to microvolts
+        else
+            V_uV = dataArray;
+        end
+
+    end
+    
+    
+   digits(6) 
+   t_ms = vpa(0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000);
+
+
     % =========================
     % General Utility Functions
     % =========================
@@ -82,7 +119,13 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
     
         fid = fopen(fullfile(path, binName), 'rb');
         fseek(fid, samp0 * 2 * nChan, 'bof');
-        dataArray = fread(fid, sizeA, 'int16=>double');
+
+        if obj.convertData2Double
+            dataArray = fread(fid, sizeA, 'int16=>double');
+        else
+            dataArray = fread(fid, sizeA, 'int16');
+        end
+
         fclose(fid);
     end % ReadBin
 
@@ -170,35 +213,6 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
             dataArray(j,:) = dataArray(j,:) * conv;
         end
     end
-
-    binName = string(obj.dataFileNames(contains(obj.dataFileNames,'nidq')));
-
-    path = obj.recordingDir;
-
-    meta = ReadMeta(binName, path);
-
-    chanList = channels;
-
-    nSamp = round((window_ms/1000)*str2double(meta.niSampRate));
-    
-    V_uV = zeros(length(channels),length(startTime_ms),nSamp);
-
- 
-    for trials = 1:length(startTime_ms)
-
-        t0= startTime_ms(trials)/1000;
-        samp0 = round(t0*str2double(meta.niSampRate));
-    
-        dataArray = ReadBin(samp0, nSamp, meta, binName, path);
-        
-        dataArray = dataArray(chanList,:);
-
-        V_uV(:,trials,:) = GainCorrectNI(dataArray, chanList, meta); %convert to microvolts
-    end
-    
-    
-   digits(6) 
-   t_ms = vpa(0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000);
 
 
 

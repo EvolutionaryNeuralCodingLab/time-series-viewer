@@ -34,7 +34,10 @@ function obj=extractMetaData(obj)
             meta = setfield(meta, tag, C{2}{i});
         end
 
+        
+
     end % ReadMeta
+
 
     file = dir (path_r);
     filenames = {file.name};
@@ -67,7 +70,7 @@ function obj=extractMetaData(obj)
     exp = erase(string(out(end)),'_g0_tcat.imec0.ap.bin');
     obj.recordingName = char(exp); 
     
-%     %2. recordingDir % (String) Full directory containing the recorded session
+%   %2. recordingDir % (String) Full directory containing the recorded session
 %     out2=regexp(metaAP.fileName,"/"+exp,'split');
 %     direc = string(out2(1));
 %     obj.recordingDir = direc;
@@ -171,6 +174,8 @@ function obj=extractMetaData(obj)
     %14. layoutName %the name of the channel layout (electrode type)
     obj.layoutName = '3B1 staggered';
 
+    % FUNCTIONS TO RETURN CONVERSION FACTORS:
+
     %Function to get conversion value:
     % =========================================================
         % Return a multiplicative factor for converting 16-bit
@@ -194,21 +199,123 @@ function obj=extractMetaData(obj)
         end
     end % Int2Volts
     
-    %15. MicrovoltsPerADimec % the digital to analog conversion value
-    convImec = Int2Volts(metaAP);
-    obj.MicrovoltsPerADimec = convImec;
+% Return gain arrays for imec channels.
+%
+% Index into these with original (acquired) channel IDs.
+%
+    function [APgain,LFgain] = ChanGainsIM(meta)
+
+        if isfield(meta,'imDatPrb_type')
+            probeType = str2num(meta.imDatPrb_type);
+        else
+            probeType = 0;
+        end
+        if (probeType == 21) || (probeType == 24)
+            [AP,LF,~] = ChannelCountsIM(meta);
+            % NP 2.0; APgain = 80 for all channels
+            APgain = zeros(AP,1,'double');
+            APgain = APgain + 80;
+            % No LF channels, set gain = 0
+            LFgain = zeros(LF,1,'double');
+        else
+            % 3A or 3B data?
+            % 3A metadata has field "typeEnabled" which was replaced
+            % with "typeImEnabled" and "typeNiEnabled" in 3B.
+            % The 3B imro table has an additional field for the
+            % high pass filter enabled/disabled
+            if isfield(meta,'typeEnabled')
+                % 3A data
+                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d', ...
+                    'EndOfLine', ')', 'HeaderLines', 1 );
+            else
+                % 3B data
+                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d %*s', ...
+                    'EndOfLine', ')', 'HeaderLines', 1 );
+            end
+            APgain = double(cell2mat(C(1)));
+            LFgain = double(cell2mat(C(2)));
+        end
+    end % ChanGainsIM
+
+% =========================================================
+% Return array of original channel IDs. As an example,
+% suppose we want the imec gain for the ith channel stored
+% in the binary data. A gain array can be obtained using
+% ChanGainsIM() but we need an original channel index to
+% do the look-up. Because you can selectively save channels
+% the ith channel in the file isn't necessarily the ith
+% acquired channel, so use this function to convert from
+% ith stored to original index.
+%
+% Note: In SpikeGLX channels are 0-based, but MATLAB uses
+% 1-based indexing, so we add 1 to the original IDs here.
+%
+    function chans = OriginalChans(meta)
+        if strcmp(meta.snsSaveChanSubset, 'all')
+            chans = (1:str2double(meta.nSavedChans));
+        else
+            chans = str2num(meta.snsSaveChanSubset);
+            chans = chans + 1;
+        end
+    end % OriginalChans
+
+    [APgain,LFgain] = ChanGainsIM(meta);
+    APgain= APgain(1); %takes gain of first channel. Asumes all channels have the same gain).
+
+    %15. MicrovoltsPerADimec % the digital to analog conversion value AP
+    convImec = Int2Volts(metaAP)/APgain;
+    obj.MicrovoltsPerAD = convImec;
+
+    %15.2 MicrovoltsPerADimec % the digital to analog conversion value LF
+    convImec = Int2Volts(metaAP)/LFgain;
+    obj.MicrovoltsPerAD = convImec;
+
+    %Functions required to get gain from dinaq channels
+        % =========================================================
+    % Return gain for ith channel stored in the nidq file.
+    %
+    % ichan is a saved channel index, rather than an original
+    % (acquired) index.
+    %
+    function gain = ChanGainNI(ichan, savedMN, savedMA, meta)
+        if ichan <= savedMN
+            gain = str2double(meta.niMNGain);
+        elseif ichan <= savedMN + savedMA
+            gain = str2double(meta.niMAGain);
+        else
+            gain = 1;
+        end
+    end % ChanGainNI
+
+    % =========================================================
+    % Return counts of each nidq channel type that compose
+    % the timepoints stored in binary file.
+    %
+    function [MN,MA,XA,DW] = ChannelCountsNI(meta)
+        M = str2num(meta.snsMnMaXaDw);
+        MN = M(1);
+        MA = M(2);
+        XA = M(3);
+        DW = M(4);
+    end % ChannelCountsNI
 
     %16. MicrovoltsPerADnidq % the digital to analog conversion value
-    convNidq = Int2Volts(metaNI);
-    obj.MicrovoltsPerADnidq = convNidq;
+     [MN,MA] = ChannelCountsNI(metaNI);
+     fI2V = Int2Volts(metaNI);
 
-    %16.0 
-    obj.MicrovoltsPerAD = convImec;
-    %14.1. 
-    obj.convertData2Double = 1; % if data should be converted to double from the original quantization
+      for i = 1:length(chans1)   % index into timepoint
+            NIconv(i) = fI2V / ChanGainNI(i, MN, MA, meta);
+  
+      end
+
+    convNidq = Int2Volts(metaNI)/NIconv(1); %takes gain of first channel. Asumes all channels have the same gain).
+    obj.MicrovoltsPerADAnalog= convNidq; 
+
+    
     
     %-->% Don't know were this info is: ZeroADValue % the digital zero value
     obj.ZeroADValue = 0;
+    obj.ZeroADValueAnalog = 0;
 
 
     obj.datatype = 'binary SpikeGLX';        % class of data in the recording

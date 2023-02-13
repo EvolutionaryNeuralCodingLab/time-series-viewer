@@ -32,10 +32,11 @@ classdef NPAPRecording < dataRecording
         fileSizeBytesAP
         fileSizeBytesLF
 
-%         convertData2Double = 1; % if data should be converted to double from the original quantization
-%         ZeroADValue % the digital zero value
-        MicrovoltsPerADimec % the digital to analog conversion value
-        MicrovoltsPerADnidq 
+        %convertData2Double =1; % if data should be converted to double from the original quantization
+        %ZeroADValue % the digital zero value
+        %MicrovoltsPerAD % the digital to analog conversion value
+        MicrovoltsPerADLF
+        %MicrovoltsPerADAnalog
 %         datatype        % class of data in the recording
         
     end

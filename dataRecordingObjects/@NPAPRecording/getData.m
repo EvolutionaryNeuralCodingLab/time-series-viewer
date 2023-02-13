@@ -35,8 +35,14 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         dataArray = ReadBin(samp0, nSamp, meta, binName, path);
         
         dataArray = dataArray(chanList,:);
+        
+        if obj.convertData2Double
+             V_uV(:,trials,:) = GainCorrectIM(dataArray*1000000, chanList, meta);
+        else
+            V_uV = dataArray;
+        end
 
-        V_uV(:,trials,:) = GainCorrectIM(dataArray*1000000, chanList, meta); %convert to microvolts
+        %convert to microvolts
     end
     
     
@@ -124,7 +130,13 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
 
         fid = fopen(fullfile(path, binName), 'rb');
         fseek(fid, samp0 * 2 * nChan, 'bof');
-        dataArray = fread(fid, sizeA, 'int16=>double');
+        
+        if obj.convertData2Double
+            dataArray = fread(fid, sizeA, 'int16=>double');
+        else
+            dataArray = fread(fid, sizeA, 'int16');
+        end
+            
         fclose(fid);
     end % ReadBin
 
