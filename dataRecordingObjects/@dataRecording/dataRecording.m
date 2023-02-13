@@ -796,7 +796,7 @@ classdef (Abstract) dataRecording < handle
                 %calculate start and end times for all sessions.
                 startTimes=[];endTimes=[];
                 for i=1:size(par.timeLimitsMs,2)
-                    if par.timeLimitsMs(2,i)>=par.chunkSize
+                    if par.timeLimitsMs(2,i)-(par.timeLimitsMs(1,i))>=par.chunkSize
                         tmpStart=par.timeLimitsMs(1,i):par.chunkSize:(par.timeLimitsMs(2,i)-par.chunkSize);
                     else
                         tmpStart=par.timeLimitsMs(1,i);

@@ -1,7 +1,7 @@
             
 function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
             
-    syncdir = string(obj.recordingDir) + "\sync_events"; %Determine dir. 
+    syncdir = string(obj.recordingDir) + filesep + "sync_events"; %Determine dir. 
     
     file = dir (syncdir);
     filenames = {file.name}; %Get filenames in sync folder
@@ -15,16 +15,15 @@ function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
     j =1;
 
     for n = 1:length(filenames)
-
     
         %CH1
         ch = filenames(1); %Firsdt file name
-        dt = 1000*importdata(string(syncdir) +"\"+ string(ch)); %Load file in miliseconds
+        dt = 1000*importdata(string(syncdir) +filesep+ string(ch)); %Load file in miliseconds
         filenames = filenames(2:end); %reduce number of filenames by one.
         chi = filenames(contains(filenames,regexp(ch,'\d*','Match'))); %Find the inverse of the channel by selectin an out that matches ch number.
     
         if ~isempty(chi) %If there is a match then combine both the up and down signal of the channel
-            dti = 1000*importdata(string(syncdir) +"\"+ string(chi));
+            dti = 1000*importdata(string(syncdir) +filesep+ string(chi));
             dtc = sort([dt',dti']);
 
             if ~exist('startTime_ms','var') && ~exist('window_ms','var')
