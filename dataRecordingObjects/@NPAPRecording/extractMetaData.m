@@ -313,15 +313,17 @@ function obj=extractMetaData(obj)
 
     
     
-    %-->% Don't know were this info is: ZeroADValue % the digital zero value
+    %17. Zero value for binary recordings
     obj.ZeroADValue = 0;
     obj.ZeroADValueAnalog = 0;
 
-
-    obj.datatype = 'binary SpikeGLX';        % class of data in the recording
+    %18. Object type
+    obj.datatype = 'int16';        % class of data in the recording
 
     fprintf('Extracting meta data from: %s...\n',path_r);
 
+
+    %Channels 
     obj.nSavedChansNidq = metaNI.nSavedChans;
     obj.nSavedChansImec = metaAP.nSavedChans;
 
