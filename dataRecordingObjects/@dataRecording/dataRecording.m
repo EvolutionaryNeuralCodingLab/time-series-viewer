@@ -705,7 +705,9 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'newAnalogChNumbers',[]);%the new analog channel numbers in the generated binary file
             addParameter(parseObj,'timeLimitsMs',[],@isnumeric);%[2 X N] - a vector with start and end times to extract [ms] - if N>2 combines together a few segments 
             addParameter(parseObj,'targetDataType','int16',@isstring); %class of electrode/analog data sample
+            addParameter(parseObj,'overwriteBinaryData',false,@isnumeric); %if true overwrites data even if files exist
             addParameter(parseObj,'chunkSize',2*60*1000,@isnumeric); %msec
+            addParameter(parseObj,'overwriteBinaryData',false,@isnumeric); %msec
             addParameter(parseObj,'medianFilterGroup',[],@iscell);% {1 X N} - cell array of groups of electrode channel numbers for calculating joint median (if empty, does not filter)
             addParameter(parseObj,'inputParams',false,@isnumeric);
             parseObj.parse(targetFileBase,varargin{:});
@@ -738,11 +740,7 @@ classdef (Abstract) dataRecording < handle
             if ~any(strcmp(targetFileBase(end-3:end),{'.dat','.bin'}))
                 error('input file should have a ''.dat/.bin'' extension');
             end
-            %Verifys that the target file does not exist to not overwrite files.
-            if exist(targetFileBase,'file')
-                disp('The chosed file name already exists!!!! please delete data first and run again!');
-                return;
-            end
+
             %create a folder if target folder does not exist
             [folderName,FileName]=fileparts(targetFileBase);
             if ~isfolder(folderName)
@@ -842,123 +840,135 @@ classdef (Abstract) dataRecording < handle
             %start extracting data
             tic;
 
-            %open data files
-            fid = fopen(targetFileBase, 'w+');
-            if nAnalog>0
-                fidA = fopen([targetFileBase(1:end-4) '_Analog.bin'], 'w+');
-            else
-                fidA=[];
-            end
+            %Verifys that the target file does not exist to not overwrite files.
+            if ~exist(targetFileBase,'file') || overwriteBinaryData
+                try %convert electrode data to binary
 
-            try
-                %verify that dataRecording property is set such that all data in converted to double upon extraction
-                tempConvertData2Double=obj.convertData2Double; %loads data in double format
-                obj.convertData2Double=useDouble;
+                    %open data files
+                    fid = fopen(targetFileBase, 'w+');
+                    if nAnalog>0
+                        fidA = fopen([targetFileBase(1:end-4) '_Analog.bin'], 'w+');
+                    else
+                        fidA=[];
+                    end
 
-                fprintf('\nConverting blocks to binary %s format(/%d) : ',par.targetDataType,numel(startTimes));
-                nDigits=0;
-                for j=1:numel(startTimes)
-                    fprintf([repmat('\b',1,nDigits) '%d'],j);nDigits=length(num2str(j));
-                    if ~useDouble
-                        if ~convertDataType
+
+                    %verify that dataRecording property is set such that all data in converted to double upon extraction
+                    tempConvertData2Double=obj.convertData2Double; %loads data in double format
+                    obj.convertData2Double=useDouble;
+
+                    fprintf('\nConverting blocks to binary %s format(/%d) : ',par.targetDataType,numel(startTimes));
+                    nDigits=0;
+                    for j=1:numel(startTimes)
+                        fprintf([repmat('\b',1,nDigits) '%d'],j);nDigits=length(num2str(j));
+                        if ~useDouble
+                            if ~convertDataType
+                                data=squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j)));
+                                if nAnalog>0
+                                    dataAnalog=squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j)));
+                                end
+                                if convertTo16 %data is 32bit,convert to 16 with saturation
+                                    saturation=32767; %2^15 -1 maximal value of 16bit
+                                    data(data>saturation)=saturation;
+                                    data(data<(-saturation))=-saturation;
+                                    data=int16(data);
+                                    if nAnalog>0
+                                        dataAnalog(dataAnalog>saturation)=saturation;
+                                        dataAnalog(dataAnalog<(-saturation))=-saturation;
+                                        dataAnalog=int16(dataAnalog);
+                                    end
+                                end
+                            else %convert from uint to int
+                                if ~convertTo16
+                                    data=int16(int32(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                    if nAnalog>0
+                                        dataAnalog=int16(int32(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                    end
+                                else
+                                    %convert to signed
+                                    saturation=32767; %2^15 -1 maximal value of 16bit
+                                    data=int32(int64(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                    %convert to 16 w saturation
+                                    data(data>saturation)=saturation;
+                                    data(data<(-saturation))=-saturation;
+                                    data=int16(data);
+
+                                    if nAnalog>0
+                                        dataAnalog=int32(int64(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
+                                        dataAnalog(dataAnalog>saturation)=saturation;
+                                        dataAnalog(dataAnalog<(-saturation))=-saturation;
+                                        dataAnalog=int16(dataAnalog);
+                                    end
+                                end
+                            end
+                        else %unknown data type - get data in uV and convert to 16bit
+                            saturation=32767; %2^15 -1 maximal value of 16bit
                             data=squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j)));
+                            data=(data+obj.ZeroADValue)/obj.MicrovoltsPerAD(1);
+                            data(data>saturation)=saturation;
+                            data(data<(-saturation))=-saturation;
+                            data=int16(data);
                             if nAnalog>0
                                 dataAnalog=squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j)));
-                            end
-                            if convertTo16 %data is 32bit,convert to 16 with saturation
-                                saturation=32767; %2^15 -1 maximal value of 16bit
-                                data(data>saturation)=saturation;
-                                data(data<(-saturation))=-saturation;
-                                data=int16(data);
-                                if nAnalog>0
-                                    dataAnalog(dataAnalog>saturation)=saturation;
-                                    dataAnalog(dataAnalog<(-saturation))=-saturation;
-                                    dataAnalog=int16(dataAnalog);
-                                end
-                            end
-                        else %convert from uint to int
-                            if ~convertTo16
-                                data=int16(int32(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
-                                if nAnalog>0
-                                    dataAnalog=int16(int32(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
-                                end
-                            else
-                                %convert to signed
-                                saturation=32767; %2^15 -1 maximal value of 16bit
-                                data=int32(int64(squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
-                                %convert to 16 w saturation
-                                data(data>saturation)=saturation;
-                                data(data<(-saturation))=-saturation;
-                                data=int16(data);
-
-                                if nAnalog>0
-                                    dataAnalog=int32(int64(squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j))))-zeroValue);
-                                    dataAnalog(dataAnalog>saturation)=saturation;
-                                    dataAnalog(dataAnalog<(-saturation))=-saturation;
-                                    dataAnalog=int16(dataAnalog);
-                                end
+                                dataAnalog=(dataAnalog+obj.ZeroADValue)/obj.MicrovoltsPerADAnalog(1);
+                                dataAnalog(dataAnalog>saturation)=saturation;
+                                dataAnalog(dataAnalog<(-saturation))=-saturation;
+                                dataAnalog=int16(dataAnalog);
                             end
                         end
-                    else %unknown data type - get data in uV and convert to 16bit
-                        saturation=32767; %2^15 -1 maximal value of 16bit
-                        data=squeeze(obj.getData(electrodeCh,startTimes(j),endTimes(j)-startTimes(j)));
-                        data=(data+obj.ZeroADValue)/obj.MicrovoltsPerAD(1);
-                        data(data>saturation)=saturation;
-                        data(data<(-saturation))=-saturation;
-                        data=int16(data);
+                        %median filters are performed only on electrode channels (not on analog channels)
+                        if ~isempty(par.medianFilterGroup)
+                            for i=1:numel(par.medianFilterGroup)
+                                data(pGroup{i},:)=bsxfun(@minus,data(pGroup{i},:),median(data(pGroup{i},:)));
+                            end
+                        end
+                        pause(0.0001);
+                        fwrite(fid, data, ['*' par.targetDataType]);
                         if nAnalog>0
-                            dataAnalog=squeeze(obj.getAnalogData(analogCh,startTimes(j),endTimes(j)-startTimes(j)));
-                            dataAnalog=(dataAnalog+obj.ZeroADValue)/obj.MicrovoltsPerADAnalog(1);
-                            dataAnalog(dataAnalog>saturation)=saturation;
-                            dataAnalog(dataAnalog<(-saturation))=-saturation;
-                            dataAnalog=int16(dataAnalog);
+                            fwrite(fidA, dataAnalog, ['*' par.targetDataType]);
                         end
                     end
-                    %median filters are performed only on electrode channels (not on analog channels)
-                    if ~isempty(par.medianFilterGroup)
-                        for i=1:numel(par.medianFilterGroup)
-                            data(pGroup{i},:)=bsxfun(@minus,data(pGroup{i},:),median(data(pGroup{i},:)));
-                        end
-                    end
-                    pause(0.0001);
-                    fwrite(fid, data, ['*' par.targetDataType]);
-                    if nAnalog>0
-                        fwrite(fidA, dataAnalog, ['*' par.targetDataType]);
-                    end
-                end
-                fclose(fid);
-                fclose(fidA);
-                fprintf('\nConversion complete!\n');
-                obj.convertData2Double=tempConvertData2Double; %return value to what it was
+                    fclose(fid);
+                    fclose(fidA);
+                    fprintf('\nConversion complete!\n');
+                    obj.convertData2Double=tempConvertData2Double; %return value to what it was
 
-            catch ME
-                fclose(fid);
-                fclose(fidA);
-                obj.convertData2Double=tempConvertData2Double; %return value to what it was
-                fprintf('Error in conversion! - closing files...\n');
-                rethrow(ME)
+                catch ME
+                    fclose(fid);
+                    fclose(fidA);
+                    obj.convertData2Double=tempConvertData2Double; %return value to what it was
+                    fprintf('Error in conversion! - closing files...\n');
+                    rethrow(ME)
+                end
+            else
+                disp('The chosed binary data file name already exists!!!! Skipping this file!');
             end
+
             %extracts trigger information
-            fprintf('\nConverting digital trigger file...\n');
-            try
-                triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
-                fidD = fopen(triggerFile, 'w+');
-                T=obj.getTrigger;
-                nT=cellfun(@(x) numel(x),T);
-                pT=find(nT>0);
+            triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
+            if ~exist(triggerFile,'file') || overwriteBinaryData
+                try %convert electrode data to binary
+                    fprintf('\nConverting digital trigger file...\n');
+                    fidD = fopen(triggerFile, 'w+');
+                    T=obj.getTrigger;
+                    nT=cellfun(@(x) numel(x),T);
+                    pT=find(nT>0);
 
-                fwrite(fidD,uint32(nT+1),'*uint32');
-                for i=1:numel(pT)
-                    fwrite(fidD, uint32(T{pT(i)}*obj.samplingFrequency(1)/1000)+1,'*uint32');
+                    fwrite(fidD,uint32(nT+1),'*uint32');
+                    for i=1:numel(pT)
+                        fwrite(fidD, uint32(T{pT(i)}*obj.samplingFrequency(1)/1000)+1,'*uint32');
+                    end
+                    fclose(fidD);
+                catch ME
+                    fclose(fidD);
+                    nT = [];
+                    disp('No triggers found! Trigger file not created.\n');
+                    rethrow(ME)
                 end
-                fclose(fidD);
-            catch ME
-                fclose(fidD);
-                nT = [];
-                disp('No triggers found! Trigger file not created.\n');
-                rethrow(ME)
+            else
+                disp('The chosen trigger file name already exists!!!! Skipping this file!');
             end
-            
+
             %generates meta data file
             metaDataFile=[targetFileBase(1:end-4) '_meta.txt'];
             if ~exist(metaDataFile,'file')
