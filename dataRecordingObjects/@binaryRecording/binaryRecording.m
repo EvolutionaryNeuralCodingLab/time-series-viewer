@@ -61,7 +61,6 @@ classdef binaryRecording < dataRecording
             nTrials=length(startTime_ms);
             V_uV=ones(numel(channels),nTrials,windowSamples,obj.datatype);
                         
-            
             for i=1:nTrials
                 if startTime_ms(i)>=0 && (startTime_ms(i)+window_ms)<=obj.recordingDuration_ms
                     fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels,'bof');
@@ -172,7 +171,7 @@ classdef binaryRecording < dataRecording
                 fid=fopen(triggerFile,'r');
                 nTriggers=double(fread(fid,numel(obj.triggerNames),'*uint32'))-1;
                 for i=1:numel(nTriggers)
-                   	T_ms{i}=double((fread(fid,nTriggers(i),'*uint32')-1))/(obj.samplingFrequency/1000);
+                   	T_ms{i}=double((fread(fid,nTriggers(i),'*uint32')-1))/(obj.samplingFrequency/1000)';
                 end
             end
             fclose(fid);
@@ -236,7 +235,7 @@ classdef binaryRecording < dataRecording
                 obj.nTotSamples=floor(position/2/obj.totalChannels);
                 fclose(fid);
                 
-                obj.recordingDuration_ms=obj.nTotSamples/obj.samplingFrequency*1000;
+                obj.recordingDuration_ms=obj.nTotSamples/obj.samplingFrequency(1)*1000;
                 disp('saving meta data');
                 obj.saveMetaData;
             else

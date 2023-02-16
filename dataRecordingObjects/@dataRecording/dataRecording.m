@@ -705,11 +705,11 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'newAnalogChNumbers',[]);%the new analog channel numbers in the generated binary file
             addParameter(parseObj,'timeLimitsMs',[],@isnumeric);%[2 X N] - a vector with start and end times to extract [ms] - if N>2 combines together a few segments 
             addParameter(parseObj,'targetDataType','int16',@isstring); %class of electrode/analog data sample
-            addParameter(parseObj,'overwriteBinaryData',false,@isnumeric); %if true overwrites data even if files exist
+            addParameter(parseObj,'overwriteBinaryData',0,@isnumeric); %if true overwrites data even if files exist
+            addParameter(parseObj,'overwriteTriggerData',0,@isnumeric); %if true overwrites triggers even if files exist
             addParameter(parseObj,'chunkSize',2*60*1000,@isnumeric); %msec
-            addParameter(parseObj,'overwriteBinaryData',false,@isnumeric); %msec
             addParameter(parseObj,'medianFilterGroup',[],@iscell);% {1 X N} - cell array of groups of electrode channel numbers for calculating joint median (if empty, does not filter)
-            addParameter(parseObj,'inputParams',false,@isnumeric);
+            addParameter(parseObj,'inputParams',0,@isnumeric);
             parseObj.parse(targetFileBase,varargin{:});
             if parseObj.Results.inputParams %if true, plots all possible input params to the function
                 disp(parseObj.Results);
@@ -802,6 +802,9 @@ classdef (Abstract) dataRecording < handle
                     startTimes=[startTimes tmpStart];
                     endTimes=[endTimes tmpStart(2:end) par.timeLimitsMs(2,i)];
                 end
+                if ~issorted(startTimes) || ~issorted(endTimes)
+                    error('timeLimitsMs must be sorted!!!');
+                end
             end
 
             %check channel numbers
@@ -841,7 +844,7 @@ classdef (Abstract) dataRecording < handle
             tic;
 
             %Verifys that the target file does not exist to not overwrite files.
-            if ~exist(targetFileBase,'file') || overwriteBinaryData
+            if ~exist(targetFileBase,'file') || par.overwriteBinaryData
                 try %convert electrode data to binary
 
                     %open data files
@@ -946,17 +949,26 @@ classdef (Abstract) dataRecording < handle
 
             %extracts trigger information
             triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
-            if ~exist(triggerFile,'file') || overwriteBinaryData
+            if ~exist(triggerFile,'file') || par.overwriteTriggerData
                 try %convert electrode data to binary
                     fprintf('\nConverting digital trigger file...\n');
-                    fidD = fopen(triggerFile, 'w+');
                     T=obj.getTrigger;
                     nT=cellfun(@(x) numel(x),T);
                     pT=find(nT>0);
+                    %correct time stamps according to cuts
+                    TNew=cell(1,numel(nT));
+                    accumDelay=cumsum([0 startTimes(2:end)-endTimes(1:end-1)]);
+                    for j=1:numel(startTimes)
+                        for k=1:numel(pT)
+                            pTmp=find(T{pT(k)}>=startTimes(j) & T{pT(k)}<endTimes(j));
+                            TNew{pT(k)}=[TNew{pT(k)} (T{pT(k)}(pTmp(:))-accumDelay(j))*obj.samplingFrequency(1)/1000];
+                        end
+                    end
 
-                    fwrite(fidD,uint32(nT+1),'*uint32');
+                    fidD = fopen(triggerFile, 'w+');
+                    fwrite(fidD,uint32(nT+1),'*uint32');%write the number of triggers from each type.
                     for i=1:numel(pT)
-                        fwrite(fidD, uint32(T{pT(i)}*obj.samplingFrequency(1)/1000)+1,'*uint32');
+                        fwrite(fidD, uint32(TNew{pT(i)})+1,'*uint32');
                     end
                     fclose(fidD);
                 catch ME
@@ -974,13 +986,14 @@ classdef (Abstract) dataRecording < handle
             if ~exist(metaDataFile,'file')
                 fidM=fopen(metaDataFile,'w');
                 fprintf(fidM,'nSavedChans = %d\n',numel(electrodeCh));
-                fprintf(fidM,'sRateHz = %d\n',obj.samplingFrequency(1));
-                fprintf(fidM,'sRateAnalogHz = %d\n',obj.samplingFrequencyAnalog(1));
+                fprintf(fidM,'sRateHz = %.12f\n',obj.samplingFrequency(1));
+                fprintf(fidM,'sRateAnalogHz = %.12f\n',obj.samplingFrequencyAnalog(1));
                 fprintf(fidM,'nChans = %d\n',numel(electrodeCh));
                 outputstr = ['%d' repmat(',%d', 1, numel(par.newElectrodeChNumbers)-1)]; % replicate it to match the number of columns
                 fprintf(fidM,['channelNumbers = ', outputstr, '\n'], par.newElectrodeChNumbers);
                 outputstr = ['%d' repmat(',%d', 1, numel(par.newAnalogChNumbers)-1)]; % replicate it to match the number of columns
                 fprintf(fidM,['channelNumbersAnalog = ', outputstr, '\n'], par.newAnalogChNumbers);
+
                 fprintf(fidM,'nTriggerChans = %d\n',numel(nT));
                 fprintf(fidM,'nAnalogChans = %d\n',numel(obj.analogChannelNumbers));
                 fprintf(fidM,'vcDataType = %s\n',par.targetDataType);

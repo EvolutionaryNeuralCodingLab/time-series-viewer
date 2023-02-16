@@ -103,7 +103,8 @@ function obj=extractMetaData(obj)
     %7. samplingFrequencyNI %(1xN) Sampling rate [Hz] of NIDQ
     srateNI = str2double(metaNI.niSampRate);
     obj.samplingFrequencyNI = srateNI;
-    
+    obj.samplingFrequencyAnalog = srateNI;
+
     %8. samplingFrequencyLF %(1xN) Sampling rate [Hz] of LF band
     if exist("metaLF","var") 
         srateLF = str2double(metaLF.imSampRate);
@@ -172,7 +173,7 @@ function obj=extractMetaData(obj)
     obj.chLayoutPositions = coor;
 
     %14. layoutName %the name of the channel layout (electrode type)
-    obj.layoutName = '3B1 staggered';
+    obj.layoutName = 'staggered-3B1';
 
     % FUNCTIONS TO RETURN CONVERSION FACTORS:
 
