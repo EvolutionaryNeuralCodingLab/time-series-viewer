@@ -169,9 +169,9 @@ classdef binaryRecording < dataRecording
             triggerFile=[obj.recordingDir filesep obj.recordingName '_Triggers.' obj.fileExtension];
             if exist(triggerFile,'file')
                 fid=fopen(triggerFile,'r');
-                nTriggers=double(fread(fid,numel(obj.triggerNames),'*uint32'))-1;
+                nTriggers=double(fread(fid,numel(obj.triggerNames),'*uint32')-1);
                 for i=1:numel(nTriggers)
-                   	T_ms{i}=double((fread(fid,nTriggers(i),'*uint32')-1))/(obj.samplingFrequency/1000)';
+                   	T_ms{i}=double(fread(fid,nTriggers(i),'*uint32')-1)'/(obj.samplingFrequency/1000);
                 end
             end
             fclose(fid);

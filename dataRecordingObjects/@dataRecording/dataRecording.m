@@ -955,20 +955,27 @@ classdef (Abstract) dataRecording < handle
                     T=obj.getTrigger;
                     nT=cellfun(@(x) numel(x),T);
                     pT=find(nT>0);
+                    for k=1:numel(pT)
+                        if size(T{pT(k)},1)>1
+                            T{pT(k)}=T{pT(k)}';
+                            fprintf('Notice! The input triggers are not all [1 x N] vectors. Changing and continuing...\n')
+                        end
+                    end
                     %correct time stamps according to cuts
                     TNew=cell(1,numel(nT));
-                    accumDelay=cumsum([0 startTimes(2:end)-endTimes(1:end-1)]);
+                    accumDelay=cumsum([startTimes(1) startTimes(2:end)-endTimes(1:end-1)]);
                     for j=1:numel(startTimes)
                         for k=1:numel(pT)
                             pTmp=find(T{pT(k)}>=startTimes(j) & T{pT(k)}<endTimes(j));
                             TNew{pT(k)}=[TNew{pT(k)} (T{pT(k)}(pTmp(:))-accumDelay(j))*obj.samplingFrequency(1)/1000];
                         end
                     end
+                    nT=cellfun(@(x) numel(x),TNew);
 
-                    fidD = fopen(triggerFile, 'w+');
+                    fidD = fopen(triggerFile, 'w');
                     fwrite(fidD,uint32(nT+1),'*uint32');%write the number of triggers from each type.
-                    for i=1:numel(pT)
-                        fwrite(fidD, uint32(TNew{pT(i)})+1,'*uint32');
+                    for j=1:numel(pT)
+                        fwrite(fidD, uint32(TNew{pT(j)}+1),'*uint32');
                     end
                     fclose(fidD);
                 catch ME
