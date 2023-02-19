@@ -258,6 +258,33 @@ classdef OERecording < dataRecording
             end
         end
         
+        function [camTrigs]=getCamerasTrigger(obj, trig_chanel, stop_len)
+            %Extract triggers fron event channel, only for the times
+            %between 2 triggers stops of above 1 sec.
+            % It calls the regular getTiggers, and add another selection
+            % for the relavnt triggers. 
+            % Usage : [camTrigs]=obj.getCamerasTrigger(startTime_ms,window_ms)
+            %Input : 
+            % Output:camTrigs= triggers vectoer of times of on triggers, in ms from
+            % the recording start time (0).
+            if nargin < 3
+                stop_len = 1000; % assuming that in Reptilearn the stop in the triggers are 2000 ms.
+            end
+            
+            startTime_ms = 0;
+            tTrig = getTrigger(obj,startTime_ms);
+            trig = tTrig{trig_chanel}; % might change according to connections to the aquisition board. 
+            
+            edges = find(diff(trig)>stop_len);
+            if length(edges) == 2
+                camTrigs = trig(edges(1)+1:edges(2)+1); % only the triggers between stops.
+            else
+                print('too many or too little gaps in triggers. please use getTriggers')
+            end
+
+
+        end
+
         function obj=closeOpenFiles(obj) %clear all open file handles
             if ~iscell(obj.recordingDir)
                 nRecordings=1;
