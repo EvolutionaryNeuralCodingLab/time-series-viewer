@@ -543,7 +543,7 @@ classdef (Abstract) dataRecording < handle
             currentIdx=0;prevCh=-1;
             nClusters=numel(clusterTable.ch);
             for i=1:nClusters
-                t{i}=spike_times(spike_clusters==clusterTable.id(i))';
+                t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))';
                 ic(1,i)=clusterTable.ch(i);
                 ic(3,i)=currentIdx+1;
                 ic(4,i)=currentIdx+numel(t{i});
