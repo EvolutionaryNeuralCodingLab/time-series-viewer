@@ -39,7 +39,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         if obj.convertData2Double
              V_uV(:,trials,:) = GainCorrectIM(dataArray*1000000, chanList, meta);
         else
-            V_uV = dataArray;
+            V_uV(:,trials,:) = dataArray;
         end
 
         %convert to microvolts
