@@ -34,6 +34,7 @@ function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
 
             dtc = dtc(dtc>= startTime_ms & dtc <= startTime_ms+window_ms);
             T_ms(j) = num2cell(dtc,[1 2]); %asign it to the first position of T_ms cell array
+
             j = j+1;
 
         elseif (sum(contains(filenames,regexp(ch,'\d*','Match'))) <1) && ~contains(ch,"inv") %If there is no number match (no inverse signal) and it is not an inverse signal. 
@@ -45,10 +46,23 @@ function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
             end
             
             dt = dt(dt>= startTime_ms & dt <= startTime_ms+window_ms);
+            
             T_ms(j) = num2cell(dt,[1 2]);
+
+           
+
             j = j+1;
         end     
 
+    end
+%Change shape of ceel if it is not 1xX
+    for i = 1:length(T_ms)
+         [s, ~] = size(T_ms{i});
+
+            if s ~= 1
+
+                T_ms{i} = T_ms{i}';
+            end
     end
     
 end

@@ -264,12 +264,11 @@ function obj=extractMetaData(obj)
     APgain= APgain(1); %takes gain of first channel. Asumes all channels have the same gain).
 
     %15. MicrovoltsPerADimec % the digital to analog conversion value AP
-    convImec = Int2Volts(metaAP)/APgain;
-    obj.MicrovoltsPerAD = convImec;
+    obj.MicrovoltsPerAD = repmat(Int2Volts(metaAP)/APgain,1,length(chans));
 
     %15.2 MicrovoltsPerADimec % the digital to analog conversion value LF
-    convImec = Int2Volts(metaAP)/LFgain;
-    obj.MicrovoltsPerAD = convImec;
+    LFgain= LFgain(1);
+    obj.MicrovoltsPerAD_LF = repmat(Int2Volts(metaAP)/LFgain,1,length(chans));
 
     %Functions required to get gain from dinaq channels
         % =========================================================

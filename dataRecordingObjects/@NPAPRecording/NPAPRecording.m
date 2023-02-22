@@ -35,7 +35,7 @@ classdef NPAPRecording < dataRecording
         %convertData2Double =1; % if data should be converted to double from the original quantization
         %ZeroADValue % the digital zero value
         %MicrovoltsPerAD % the digital to analog conversion value
-        MicrovoltsPerADLF
+        MicrovoltsPerAD_LF
         %MicrovoltsPerADAnalog
 %         datatype        % class of data in the recording
         
