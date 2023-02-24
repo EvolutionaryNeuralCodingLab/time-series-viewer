@@ -260,7 +260,7 @@ function obj=extractMetaData(obj)
         end
     end % OriginalChans
 
-    [APgain,LFgain] = ChanGainsIM(meta);
+    [APgain,LFgain] = ChanGainsIM(metaAP);
     APgain= APgain(1); %takes gain of first channel. Asumes all channels have the same gain).
 
     %15. MicrovoltsPerADimec % the digital to analog conversion value AP
