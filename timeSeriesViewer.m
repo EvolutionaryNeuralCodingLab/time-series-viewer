@@ -388,9 +388,10 @@ end
             AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push', 'String','Load','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hLoadVideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox,'Style','edit', 'String','videoFileName','Callback',@CallbackLoadVideoEdit);
             AVG.hVideoSyncFigure.hCheckSyncPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackCheckSyncPush, 'Style','push', 'String','Check sync.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+            AVG.hVideoSyncFigure.hFrameRateEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push', 'String','Run video','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push', 'String','Implay exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-1 -3 -1 -1 -1]);
+            set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-3 -9 -3 -1 -3 -3]);
             %video synchronization was not yet verified
             AVG.Params.videoSyncVerified=false;
         else
@@ -433,15 +434,22 @@ end
             AVG.Params.videoReader   = VideoReader(AVG.hVideoSyncFigure.hLoadVideoEdit.String);
             AVG.Params.videoDuration=AVG.Params.videoReader.Duration;
             AVG.Params.frameRate=AVG.Params.videoReader.FrameRate;
+            AVG.Params.frameRateOriginal=AVG.Params.frameRate; % in some cases the video meta data is not correct. For some calculation the original value is still be important.
+            AVG.hVideoSyncFigure.hFrameRateEdit.String=num2str(AVG.Params.frameRate);
             AVG.Params.nFramesVideo=round(AVG.Params.videoDuration*AVG.Params.frameRate);
-            
+
             AVG.Params.triggerFrameSync=AVG.Params.currentTrigger;
-            diffFrames=numel(AVG.Params.currentTrigger)-round(AVG.Params.nFramesVideo);
+            if numel(find(diff(AVG.Params.triggerFrameSync)>1000))==2 %this may happen when recording with reptiLearn
+                fprintf('Exactly two >1 sec gaps found in triggers. Removing irrelevant triggers before and after gaps\n'); 
+                pStartEnd=find(diff(AVG.Params.triggerFrameSync)>1000 | diff(AVG.Params.triggerFrameSync)<-1000);
+                AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync((pStartEnd(1)+1):pStartEnd(2));
+            end
+            diffFrames=numel(AVG.Params.triggerFrameSync)-round(AVG.Params.nFramesVideo);
             if diffFrames==0
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0 1 0];
             elseif diffFrames>0
-               msgbox({['Found ' num2str(diffFrames) ' missing frames!!!'],'proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
-               AVG.Params.triggerFrameSync(round((1:diffFrames)/diffFrames*numel(AVG.Params.triggerFrameSync)))=[];
+                msgbox({['Found ' num2str(diffFrames) ' missing frames!!!'],'proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
+                AVG.Params.triggerFrameSync(round((1:diffFrames)/diffFrames*numel(AVG.Params.triggerFrameSync)))=[];
                AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
             else
                msgbox({['Found ' num2str(diffFrames) ' extra video frames relative to triggers!!!'],'proceeding under the assumption that the last frames are not relevant!'},'Attention','error','replace');
@@ -462,7 +470,7 @@ end
                 msgbox(['Missing frames in segment! video exists between ' num2str(AVG.Params.triggerFrameSync(1)) ' - ' num2str(AVG.Params.triggerFrameSync(end))],'Attention','error','replace');
                 return;
             end
-            AVG.Params.videoReader.CurrentTime = pFrames(1)/AVG.Params.frameRate;
+            AVG.Params.videoReader.CurrentTime = pFrames(1)/AVG.Params.frameRateOriginal;
             frameVid=AVG.Params.videoReader.readFrame;
             videoMat=zeros([size(frameVid) nActFrames],class(frameVid));
             videoMat(:,:,:,1)=frameVid;
@@ -492,7 +500,7 @@ end
             hTmp=line(AVG.hMainFigure.hMainAxis,[0 0],AVG.hMainFigure.hMainAxis.YLim,'color','r');
             hold(AVG.hVideoSyncFigure.hVideoAxis,'on');
             set(AVG.hVideoSyncFigure.hVideoAxis,'nextplot','replacechildren');
-            AVG.Params.videoReader.CurrentTime = pFrames(1)/AVG.Params.frameRate;
+            AVG.Params.videoReader.CurrentTime = pFrames(1)/AVG.Params.frameRateOriginal;
             for frames=1:nActFrames
                 frameVid=AVG.Params.videoReader.readFrame; %generalize to grey scale video.
                 %image(frameVid,'Parent',AVG.hVideoSyncFigure.hVideoAxis);
@@ -509,8 +517,13 @@ end
         hObj.BackgroundColor=[0.8 0.8 0.8];
     end
 
+    function CallbackFrameRateEdit(hObj,event)
+        AVG.Params.frameRate=str2num(hObj.String);
+    end
+
+
     function CallbackSyncGUI(hObj,event)
-        AVG.Params.window=str2num(AVG.Params.timeWindowExternalHandles(2).String);
+        AVG.Params.window=str2double(AVG.Params.timeWindowExternalHandles(2).String);
         AVG.hNav.startTimeEdit.String=AVG.Params.timeWindowExternalHandles(1).String;
         CallbackNavTimeEdit();
     end

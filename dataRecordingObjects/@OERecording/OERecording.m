@@ -431,7 +431,7 @@ classdef OERecording < dataRecording
             obj.recordLength = obj.dataSamplesPerRecord/obj.samplingFrequency(1)*1000;
             
             
-            disp('Extracting time stamp information...');
+            fprintf('\nExtracting time stamp information...');
             fseek(obj.fid(1), obj.headerSizeByte, 'bof');
             obj.allTimeStamps = fread(obj.fid(1), obj.nRecordsCont*obj.blkCont(1).Repeat, sprintf('%d*%s', obj.blkCont(1).Repeat,obj.blkCont(1).Types), obj.bytesPerRecCont - obj.blkBytesCont(1), 'l')/obj.samplingFrequency(1)*1000;
             obj.globalStartTime_ms=obj.allTimeStamps(1);
@@ -440,7 +440,7 @@ classdef OERecording < dataRecording
             if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), disp('Error!!! Some blocks are missing in recording'),end;
             
             %check that all records have 1024 samples (data integrity check)
-            disp('\nChecking integrity of all records in ch1...');
+            fprintf('\nChecking integrity of all records in ch1...');
             fseek(obj.fid(1), obj.headerSizeByte+obj.blkBytesCont(1), 'bof');
             sampleNumbers = fread(obj.fid(1), obj.nRecordsCont*obj.blkCont(2).Repeat, sprintf('%d*%s', obj.blkCont(2).Repeat,obj.blkCont(2).Types), obj.bytesPerRecCont - obj.blkBytesCont(2), 'l');
             if ~all(sampleNumbers == obj.dataSamplesPerRecord) && obj.version >= 0.1, error('Found currupted records!!! Please check manually'); end
@@ -476,7 +476,7 @@ classdef OERecording < dataRecording
             
             %}
             
-            disp('saving meta data');
+            fprintf('\nsaving meta data\n');
             obj.saveMetaData;
         end
         

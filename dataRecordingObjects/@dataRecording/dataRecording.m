@@ -288,6 +288,9 @@ classdef (Abstract) dataRecording < handle
         end
         
         function []=getKiloSort(obj,tempFilesFolder,varargin)
+            if nargin<2
+                fprintf('First argument should be a temporary folder. It''s better if its local.\nThis folder is important for later sorting with phy.\n');
+            end
             parseObj = inputParser;
             parseObj.FunctionName='getKiloSort';
             addRequired(parseObj,'tempFilesFolder',@ischar);
@@ -361,7 +364,7 @@ classdef (Abstract) dataRecording < handle
             
             [kilosortPath]=which('kilosort');
             if isempty(kilosortPath)
-                fprintf('Kilosort was not found, please add it to the matlab path and run again.\n');return;
+                fprintf('Kilosort was not found, please add it to the matlab path and run again.');return;
                 %addpath(genpath('/media/sil2/Data/Lizard/Stellagama/Kilosort')) % for kilosort
             end
             
@@ -543,7 +546,11 @@ classdef (Abstract) dataRecording < handle
             currentIdx=0;prevCh=-1;
             nClusters=numel(clusterTable.ch);
             for i=1:nClusters
-                t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))'; %changed from id to cluster_id
+                if any("id" == string(clusterTable.Properties.VariableNames))
+                    t{i}=spike_times(spike_clusters==clusterTable.id(i))'; %changed from id to cluster_id
+                else
+                    t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))'; %changed from id to cluster_id
+                end
                 ic(1,i)=clusterTable.ch(i);
                 ic(3,i)=currentIdx+1;
                 ic(4,i)=currentIdx+numel(t{i});
