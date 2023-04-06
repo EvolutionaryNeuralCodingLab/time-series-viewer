@@ -33,9 +33,11 @@ classdef OERecording < dataRecording
         dataDescriptionEvnt
         bytesPerRecEvnt
         blkBytesEvnt
+        eventFileName
         
         softwareVersion
         openEphyXMLData
+        openEphyXMLStructureData
         
         allTimeStamps
         globalStartTime_ms
@@ -309,41 +311,70 @@ classdef OERecording < dataRecording
         function obj=extractMetaData(obj)
             
             fprintf('\nExtracting meta data from: %s...',obj.recordingDir);
-            obj.eventFiles=dir([obj.recordingDir filesep '*.' obj.eventFileExtension]);
-            
-            %get channel information
-            channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
-            channelFiles={channelFiles.name};
-            
-            tmpStr=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
-            nFields=numel(tmpStr{1});
-            if nFields==2
-                recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
-                channelNamesAll=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
-            elseif nFields==3
-                recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
-                recordNodeNames=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
-                channelNamesAll=cellfun(@(x) x{3},tmpStr,'UniformOutput',0);
-            end
-            
-            channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
-            channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
             
             %get data from xml file
             if exist([obj.recordingDir filesep 'settings.xml'],'file')
                 obj.openEphyXMLData = readstruct([obj.recordingDir filesep 'settings.xml']);
                 processorNames={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR.pluginNameAttribute};
-                pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
-                settingNames={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
+                
+                if obj.openEphyXMLData.INFO.VERSION>"0.6.0"
+                    obj.openEphyXMLStructureData = readstruct([obj.recordingDir filesep 'structure.openephys'],'FileType','xml');
+                    channelNamesAll={obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.nameAttribute};
+                    channelFiles=convertContainedStringsToChars({obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.filenameAttribute});
+                    %settingBit2Volt={obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.bitVoltsAttribute};
+                    
+                    chTypeName=cellfun(@(x) split(x,'_'),channelNamesAll,'UniformOutput',0);
+                    chTypeName=cellfun(@(x) x(end),chTypeName);
 
-                if numel(settingNames)~=numel(channelNumbersAll)
-                    fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
+                    channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),chTypeName);
+                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    obj.eventFileName=convertStringsToChars(obj.openEphyXMLStructureData.RECORDING.STREAM.EVENTS.filenameAttribute);
+                else
+                    %get channel information from files in folder
+                    obj.eventFileName='all_channels.events';
+                    channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
+                    channelFiles={channelFiles.name};
+                    dataFileStrings=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
+                    nFields=numel(dataFileStrings{1});
+                    if nFields==2
+                        recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                        channelNamesAll=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                    elseif nFields==3
+                        recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                        recordNodeNames=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                        channelNamesAll=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
+                    end
+                    channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
+                    chTypeName=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
+                    
+                    %get channel information from settings files
+                    pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
+                    chTypeNameSettings={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
+                    if numel(chTypeNameSettings)~=numel(dataFileStrings)
+                        fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
+                    end
+                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
+                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
                 end
-                pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
-                pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
-            else
-                error("settings.xml file does not exist!!!");
+                
+
+            else %for old recordings or recordigns with no settings files
+                nFields=numel(dataFileStrings{1});
+                if nFields==2
+                    recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                    channelNamesAll=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                elseif nFields==3
+                    recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                    recordNodeNames=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                    channelNamesAll=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
+                end
+                channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
+                channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
+                pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),channelPrefixAll,'UniformOutput',0));%this may require updating for old versions of open ephys
+                pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),channelPrefixAll,'UniformOutput',0));%this may require updating for old versions of open ephys
             end
+            
             %{
             % specify analog channels
             settingFile = fileread([obj.recordingDir filesep 'settings.xml']);
@@ -497,8 +528,8 @@ classdef OERecording < dataRecording
                 obj.fidA(i)=fopen([obj.recordingDir filesep obj.channelFilesAnalog{i}],'r');
             end
             
-            if exist([obj.recordingDir filesep 'all_channels.events'],'file')
-                obj.fidEvnt=fopen([obj.recordingDir filesep 'all_channels.events'],'r');
+            if ~isempty(obj.eventFileName)
+                obj.fidEvnt=fopen([obj.recordingDir filesep obj.eventFileName],'r');
             end
         end
         
