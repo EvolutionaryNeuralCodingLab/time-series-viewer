@@ -314,13 +314,21 @@ classdef OERecording < dataRecording
             %get channel information
             channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
             channelFiles={channelFiles.name};
-
+            
             tmpStr=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
-            recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
-            channelNamesAll=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
+            nFields=numel(tmpStr{1});
+            if nFields==2
+                recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
+                channelNamesAll=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
+            elseif nFields==3
+                recordNodes=cellfun(@(x) x{1},tmpStr,'UniformOutput',0);
+                recordNodeNames=cellfun(@(x) x{2},tmpStr,'UniformOutput',0);
+                channelNamesAll=cellfun(@(x) x{3},tmpStr,'UniformOutput',0);
+            end
+            
             channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
             channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
-                
+            
             %get data from xml file
             if exist([obj.recordingDir filesep 'settings.xml'],'file')
                 obj.openEphyXMLData = readstruct([obj.recordingDir filesep 'settings.xml']);
@@ -332,8 +340,7 @@ classdef OERecording < dataRecording
                     fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
                 end
                 pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
-                pCh=cellfun(@(x) x(1:2)=="CH" | x(1:2)=="AD",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
-
+                pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),settingNames(channelNumbersAll),'UniformOutput',0));
             else
                 error("settings.xml file does not exist!!!");
             end
