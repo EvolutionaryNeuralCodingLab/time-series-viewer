@@ -408,10 +408,17 @@ classdef OERecording < dataRecording
             obj.channelNames=obj.channelNames(pTmp);
             obj.n2s(obj.channelNumbers)=1:numel(obj.channelNumbers);
             
-            [obj.analogChannelNumbers,pTmp]=sort(obj.analogChannelNumbers);
+            nAnalogChannels=numel(obj.analogChannelNumbers);
+            if numel(unique(obj.analogChannelNumbers))~=nAnalogChannels
+                obj.analogChannelNumbers=1:nAnalogChannels;
+                pTmp=1:nAnalogChannels;
+                fprintf('Analog channel numbers contain duplicates! Reordering numbers serially.\n');
+            else
+                [obj.analogChannelNumbers,pTmp]=sort(obj.analogChannelNumbers);
+            end
             obj.channelFilesAnalog=obj.channelFilesAnalog(pTmp);
             obj.analogChannelNames=obj.analogChannelNames(pTmp);
-            obj.n2sA(obj.analogChannelNumbers)=1:numel(obj.analogChannelNumbers);
+            obj.n2sA(obj.analogChannelNumbers)=1:nAnalogChannels;
             
             obj=obj.getFileIdentifiers;
             for i=1:numel(obj.channelFiles)
