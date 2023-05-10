@@ -66,7 +66,7 @@ function obj=extractMetaData(obj)
     
     % Fill in properties
     % 1. recordingName %(String) The name of the recording
-    out=regexp(metaAP.fileName,'/','split');
+    out=regexp(metaAP.fileName,filesep,'split');
     exp = erase(string(out(end)),'_g0_tcat.imec0.ap.bin');
     obj.recordingName = char(exp); 
     
