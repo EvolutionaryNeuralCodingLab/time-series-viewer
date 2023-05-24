@@ -40,8 +40,6 @@ classdef MCH5Recording < dataRecording
     pathToDigitalDataStreamGroup
     pathToAuxDataStreamGroup
     electrodeInfoChannel
-    ZeroADValueAnalog % the digital zero value
-    MicrovoltsPerADAnalog % the digital to analog conversion value
     digitalInfoChannel
     auxInfoChannel
     unit %Physical unit of the measured sensor value
@@ -53,7 +51,6 @@ classdef MCH5Recording < dataRecording
     analogUpHighRange=-290;
     analogDownHighRange=-350;
     analogDownLowRange=-370;
-    includeOnlyDigitalDataInTriggers=0; %this is to make frameTimeFromDiode.m to work
     ButterFilt = 0; %runs a highpass filter if saving double to binary.
     fileExtension = 'h5'
     sample_ms_Local
