@@ -763,20 +763,20 @@ classdef (Abstract) dataRecording < handle
                     convertTo16=false; %switch from 32int to 16int
                     useDouble=false; %other unknown type, us the data converted first to uV
                 case 'uint16'
-                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
+                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,par.targetDataType);
                     bits=16;
                     zeroValue=2^bits/2;
                     convertDataType=true;
                     convertTo16=false;
                     useDouble=false;
                 case 'int32'
-                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
+                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,par.targetDataType);
                     zeroValue=0;
                     convertTo16=true;
                     convertDataType=false;
                     useDouble=false;
                 case 'uint32'
-                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,targetDataType);
+                    fprintf('Recording data type different from target data type!!!!\nConverting from %s to %s!\n',obj.datatype,par.targetDataType);
                     bits=32;
                     zeroValue=2^bits/2;
                     convertDataType=true;
