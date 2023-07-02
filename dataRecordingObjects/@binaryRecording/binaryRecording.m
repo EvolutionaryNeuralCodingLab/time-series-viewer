@@ -222,6 +222,8 @@ classdef binaryRecording < dataRecording
 
                     if obj.totalAnalogChannels>0
                         if isfield(T,'channelNumbersAnalog') %for legacy version when channelNumbersAnalog was not saved
+                            obj.analogChannelNumbers=1:T.channelNumbersAnalog;
+                        else
                             obj.analogChannelNumbers=1:T.nAnalogChans;
                         end
                         obj.samplingFrequencyAnalog=T.sRateAnalogHz;
@@ -292,11 +294,11 @@ classdef binaryRecording < dataRecording
                 clear recordingFile;
                 recordingFile{1}=tmp;
             end
-            if ~any(strcmp(recordingFile{1}(end-2:end),{'bin','dat'}))
+            obj=obj.getRecordingFiles(recordingFile,obj.fileExtension);
+
+            if ~any(strcmp(obj.dataFileNames{1}(end-2:end),{'bin','dat'}))
                 warning('Recording file is not given, this may create errors, please provide a *.bin filename');
             end
-            obj=obj.getRecordingFiles(recordingFile,obj.fileExtension);
-            
             if isfile([obj.metaDataFile,'.mat']) && ~obj.overwriteMetaData
                 obj=loadMetaData(obj);
             else

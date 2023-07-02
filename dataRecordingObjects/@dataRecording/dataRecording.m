@@ -267,7 +267,9 @@ classdef (Abstract) dataRecording < handle
                     load(['layout_' allElectrodes{i} '.mat']);
                     chLayoutNumbers=[obj.chLayoutNumbers;En+lastElectrode];
                     chLayoutNames=[obj.chLayoutNames;Ena];
-                    chLayoutPositions=[obj.chLayoutPositions,[Enp(1,:);Enp(2,:)+max(Enp(2,:))+200]];
+                    chLayoutPositions=[obj.chLayoutPositions,[Enp(1,:);Enp(2,:)]]; %check why this was changed.
+                    %chLayoutPositions=[obj.chLayoutPositions,[Enp(1,:);Enp(2,:)+max(Enp(2,:))+200]];
+
                     lastElectrode=size(obj.chLayoutPositions,2);
                     fprintf('Channel map with pitch %d and layout %s extracted\n',obj.electrodePitch,elecString{2});
                 end
@@ -294,10 +296,12 @@ classdef (Abstract) dataRecording < handle
             parseObj = inputParser;
             parseObj.FunctionName='getKiloSort';
             addRequired(parseObj,'tempFilesFolder',@ischar);
-            addParameter(parseObj,'useKiloSort3',1,@isnumeric);
             addParameter(parseObj,'tStart',0,@isnumeric); % in milliseconds
             addParameter(parseObj,'tEnd',Inf,@isnumeric); % in milliseconds
-            addParameter(parseObj,'overwrite',0,@isnumeric);
+            addParameter(parseObj,'correctDrift',1,@isnumeric); % if to run drift correction (in any case drift will be examined)
+            addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
+            addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
+            addParameter(parseObj,'loadPreClustering',0,@isnumeric); % load pre clustering data.
             addParameter(parseObj,'outFolder',fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]),@ischar);
             if numel(varargin)==1
                 disp(parseObj.Results);
@@ -313,40 +317,52 @@ classdef (Abstract) dataRecording < handle
             % generate config structure
             rootH = par.tempFilesFolder; %where to save temp files for spike sorting (should be a fast drive)
             
-            ops.trange    = [par.tStart',par.tEnd']/1000; % time range to sort - move to time units of seconds
-            ops.NchanTOT  = numel(obj.channelNumbers); % total number of channels in your recording
+            %updsampingFactor=1.5;
+            %(pre-processing)
+            ops.trange    = [par.tStart',par.tEnd']/1000; % (pre-processing) time range to sort - move to time units of seconds
+            ops.NchanTOT  = numel(obj.channelNumbers); % (pre-processing) total number of channels in your recording
             ops.fproc   = fullfile(rootH,['temp_wh_' recID '.dat']); % proc file on a fast SSD
             ops.fbinary = fullfile(obj.recordingDir, obj.dataFileNames{1});
-            ops.fs = obj.samplingFrequency(1);% sample rate
-            ops.fshigh = 200;% frequency for high pass filtering (150)
-            ops.minfr_goodchannels = 0.001; % minimum firing rate on a "good" channel (0 to skip)
-            ops.Th = [10 6];% threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-            ops.lam = 6;% how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-            ops.AUCsplit = 0.9;% splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
-            ops.minFR = 1/500;% minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
-            ops.momentum = [20 400];% number of samples to average over (annealed from first to second value)
-            ops.sigmaMask = 30;% spatial constant in um for computing residual variance of spike
-            ops.ThPre = 8;% threshold crossings for pre-clustering (in PCA projection space)
-            ops.CAR=1; %median filter over channels (seems to slightly improve the spike quality).
-            ops.sig= 20;  % spatial smoothness constant for registration
-            ops.nblocks    = 5; % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
-            
-            % danger, changing the settings below can lead to fatal errors!!!
-            % options for determining PCs
-            ops.spkTh           = -6;      % spike threshold in standard deviations (-6)
-            ops.reorder         = 1;       % whether to reorder batches for drift correction.
-            ops.nskip           = 25;  % how many batches to skip for determining spike PCs
-            
+            ops.fs = obj.samplingFrequency(1)*1.5;% sample rate
+            ops.fshigh = 300;% frequency for high pass filtering (150)
+            ops.fslow = 3000; % frequency for low pass filtering (optional)
             ops.GPU                 = 1; % has to be 1, no CPU version yet, sorry
-            % ops.Nfilt               = 1024; % max number of clusters
-            ops.nfilt_factor        = 4; % max number of clusters per good channel (even temporary ones)
+            ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm
+
             ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection
             ops.NT                  = 64*1024+ ops.ntbuff; % must be multiple of 32 + ntbuff. This is the batch size (try decreasing if out of memory).
-            ops.whiteningRange      = 32; % number of channels to use for whitening each channel
+            ops.whiteningRange      = Inf; % number of channels to use for whitening each channel (defualt 32)
             ops.nSkipCov            = 25; % compute whitening matrix from every N-th batch
             ops.scaleproc           = 200;   % int16 scaling of whitened data
-            ops.nPCs                = 3; % how many PCs to project the spikes into
             ops.useRAM              = 0; % not yet available
+
+            %(extract_spikes)
+            ops.spkTh           = -6;      % spike threshold in standard deviations (-6)
+            ops.long_range = [30 6]; % ranges to detect isolated peaks ([30 6])
+
+            %(extract_spikes)
+            ops.Th = [25 20];% Thresholds on spike detection used during the optimization Th(1) or during the final pass Th(2). These thresholds are applied to the template projections, not to the voltage. Typically, Th(1) is high enough that the algorithm only picks up sortable units, while Th(2) is low enough that it can pick all of the spikes of these units. It doesn't matter if the final pass also collects noise: an additional per neuron threshold is set afterwards, and a splitting step ensures clusters with multiple units get split.
+
+            %ops.Nfilt               = 
+            % 1024; % max number of clusters
+            ops.nNeigh              = 32; %For visualization only - number of neighboring templates to retain projections (default 16).
+            ops.nfilt_factor        = 32; % max number of clusters per good channel (even temporary ones)
+            ops.minfr_goodchannels = 0; % minimum firing rate on a "good" channel (0 to skip)
+            ops.lam = 10;% how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot).  The individual spike amplitudes are biased towards the mean of the cluster by this factor; 50 is a lot, 0 is no bias.
+            % large lam means amplitudes are forced around the mean ([10 30 30]) // The higher these values are, the more Kilosort ensures spikes within a cluster have close amplitudes
+            ops.AUCsplit = 0.3;% splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1). Threshold on the area under the curve (AUC) criterion for performing a split in the final step. If the AUC of the split is higher than this, that split is considered good. However, a good split only goes through if, additionally, the cross-correlogram of the split units does not contain a big dip at time 0.
+            ops.minFR = 1/500;% minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
+            ops.momentum = [20 400];% number of samples to average over (annealed from first to second value)
+            ops.sigmaMask = 130;% spatial constant in um for computing residual variance of spike (default 30)
+            ops.ThPre = 8;% threshold crossings for pre-clustering (in PCA projection space) (originally 8)
+            ops.CAR=1; %median filter over channels (seems to slightly improve the spike quality).
+            ops.sig= 10;  % spatial smoothness constant for registration (20)
+            ops.nblocks    = 5; % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
+            %ops.criterionNoiseChannels = 0.1; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info).
+
+            % ops.reorder         = 1;       % whether to reorder batches for drift correction. (changing the settings below can lead to fatal errors!!!)
+            ops.nskip           = 25;  % how many batches to skip for determining spike PCs (changing the settings below can lead to fatal errors!!!)
+            ops.nPCs                = 3; % how many PCs to project the spikes into (changing the settings below can lead to fatal errors!!!)
 
             if ~strcmp(class(obj),'binaryRecording') %check if this is a binary recording.
                 fprintf('\nKilosort can only run on binary files, use the export2Binary method to first convert the data.\n Then switch to the binaryRecording object and run again\n');return;
@@ -364,126 +380,115 @@ classdef (Abstract) dataRecording < handle
             
             [kilosortPath]=which('kilosort');
             if isempty(kilosortPath)
-                fprintf('Kilosort was not found, please add it to the matlab path and run again.');return;
-                %addpath(genpath('/media/sil2/Data/Lizard/Stellagama/Kilosort')) % for kilosort
+                fprintf('Kilosort was not found, please add it to the matlab path and run again (e.g. addpath(genpath(''/home/mark/Documents/MATLAB/Kilosort''))');
+                return;
+                %addpath(genpath('/home/mark/Documents/MATLAB/Kilosort')) % path to kilosort folder
             end
-            
+
             writeNPYPath=which('writeNPY.m');
-            if par.useKiloSort3
-                rez2PhyPath2=which('rezToPhy2.m');
-                if isempty(rez2PhyPath2) || isempty(writeNPYPath)
-                    fprintf('\nrez2Phy2 (kilosort3) or writeNPY was not found, please add it to the matlab path and run again\n');
-                    return;
-                end
-            else
-                rez2PhyPath=which('rezToPhy.m');
-                if isempty(rez2PhyPath) || isempty(writeNPYPath)
-                    fprintf('\nrez2Phy (kilosort2)or writeNPY was not found, please add it to the matlab path and run again\n');
-                    return;
-                end
+            rez2PhyPath2=which('rezToPhy2.m');
+            if isempty(rez2PhyPath2) || isempty(writeNPYPath)
+                fprintf('\nrez2Phy2 (kilosort3) or writeNPY was not found, please add it to the matlab path and run again\n');
+                return;
             end
             %ch2Remove=[18 22 23 30 31]
-            
+
             [~,recFolder]=fileparts(obj.recordingDir);
             expName=['kilosortRez_' recFolder];
-            tmpSaveFile=[rootH filesep expName '_' num2str(sum(par.outFolder))]; %create a unique name for every experiment
-            
+            tmpSaveFile=[rootH filesep expName '_' num2str(sum(par.outFolder)) '.mat']; %create a unique name for every experiment
+
             %loads previously processes data
-            mkdir(rootH);
-            if isfile([tmpSaveFile '.mat'])
-                load([tmpSaveFile '.mat'])
+            if ~isfolder(rootH)
+                mkdir(rootH);
             end
-            
-            %check existance of preprocessing in previously saved data
-            if ~exist('rezPreProc','var') || par.overwrite==true
-                rezPreProc = preprocessDataSub(ops);
-                save(tmpSaveFile,'rezPreProc')
-            else
-                disp('pre processing loaded from last saved version');
+            if isfile(tmpSaveFile) & ~par.overwrite
+                load(tmpSaveFile);
             end
-            if ~exist('rezShift','var') || par.overwrite==true
-                rezShift                = datashift2(rezPreProc, 1);
-                save(tmpSaveFile,'rezShift','-append')
-            else
-                disp('Shift processing loaded from last saved version');
-            end
-            
-            if par.useKiloSort3
+
+            if ~par.loadPreClustering
+                %check existance of preprocessing in previously saved data
+                if ~exist('rezPreProc','var') || par.overwrite==true
+                    rezPreProc = preprocessDataSub(ops);
+                    save(tmpSaveFile,'rezPreProc','-v7.3');
+                else
+                    disp('pre processing loaded from last saved version');
+                end
+
+                if ~exist('rezShift','var') || par.overwrite==true
+                    rezShift                = datashift2(rezPreProc,par.correctDrift);
+                    save(tmpSaveFile,'rezShift','-append');
+                else
+                    disp('Shift processing loaded from last saved version');
+                end
+
+                %use kilosort 3
                 if ~exist('rezSpk','var') || par.overwrite==true
-                    
                     %Adding a try catch inside extract_spikes arround st(5,:) = cF; in
                     %the function extract_spikes in the folder clustering of
                     %kilosort seems to solve the problem of crashing during execution
                     [rezSpk, st3, tF]     = extract_spikes(rezShift);
-                    save(tmpSaveFile,'rezSpk','st3','tF','-append')
+                    save(tmpSaveFile,'rezSpk','st3','tF','-append');
                 else
                     disp('Spike extraction loaded from last saved version');
                 end
-                
-                
-                if ~exist('rez','var') || par.overwrite==true
-                    rez                = template_learning(rezSpk, tF, st3);
-                    [rez, st3, tF]     = trackAndSort(rez);
-                    rez                = final_clustering(rez, tF, st3);
-                    rez                = find_merges(rez, 1);
-                    
-                    % correct times for the deleted batches
-                    %rez=correct_time(rez);
-                    save(tmpSaveFile,'rez','-append')
-                else
-                    disp('Final template learning and clustering loaded from last saved version');
+
+                if ~isfolder(par.outFolder)
+                    mkdir(par.outFolder);
                 end
-                % rewrite temp_wh to the original length
-                %rewrite_temp_wh(ops)
+
+                if par.saveOnlyPreClusteringData
+                    disp('A copy of the pre-clustering results will not be deleted after sorting. Make sure to delete manually when not needed!')
+                    save([par.outFolder,filesep,'preClusteringResults.mat'],'rezSpk','tF','st3'); %the parameter file ops is included
+                end
             else
-                if ~exist('rezSpk','var') || par.overwrite==true
-                    % ORDER OF BATCHES IS NOW RANDOM, controlled by random number generator
-                    iseed = 1;
-                    
-                    % main tracking and template matching algorithm
-                    rez = learnAndSolve8b(rezShift, iseed);
-                    % final merges
-                    rez = find_merges(rez, 1);
-                    
-                    % final splits by SVD
-                    rez = splitAllClusters(rez, 1);
-                    
-                    % decide on cutoff
-                    rez = set_cutoff(rez);
-                    % eliminate widely spread waveforms (likely noise)
-                    rez.good = get_good_units(rez);
-                    fprintf('found %d good units \n', sum(rez.good>0))
-                    
-                    % correct times for the deleted batches
-                    rez=correct_time(rez);
-                    
-                    % rewrite temp_wh to the original length
-                    rewrite_temp_wh(ops);
-                    
-                    save(tmpSaveFile,'rez','-append');
-                else
-                    disp('Final template learning and clustering loaded from last saved version');
+                disp(['Loading pre clustered results from: ' par.outFolder,filesep,'preClusteringResults.mat'])
+                load([par.outFolder,filesep,'preClusteringResults.mat']); %the parameter file ops is included
+                %update the field names in the ops file saved in rezSpk
+                for i=fieldnames(ops)'
+                    rezSpk.ops.(i{1})=ops.(i{1});
                 end
             end
-            
-            
+
+            if ~exist('rez','var') || par.overwrite || par.loadPreClustering
+                try
+                    rez                = template_learning(rezSpk, tF, st3);
+                catch
+                    disp('Error with CUDA, trying again!');
+                    pause(10);
+                    rez                = template_learning(rezSpk, tF, st3);
+                end
+                [rez, st3, tF]     = trackAndSort(rez);
+                rez                = final_clustering(rez, tF, st3);
+                rez                = find_merges(rez, 1);
+
+                % correct times for the deleted batches
+                %rez=correct_time(rez);
+                if ~par.loadPreClustering
+                    save(tmpSaveFile,'rez','-append');
+                end
+            else
+                disp('Final template learning and clustering loaded from last saved version');
+            end
+
             fprintf('Done kilosort\nSaving results and exporting Phy templates to %s\n',par.outFolder);
-            if isdir(par.outFolder)
-                fprintf('Deleting previous kilosort results...\n')
+            if isfolder(par.outFolder)
+                fprintf('Deleting previous kilosort results...\n');
                 delete([par.outFolder filesep '*.npy']);
                 delete([par.outFolder filesep '*.tsv']);
-            else
-                mkdir(par.outFolder)
+                delete([par.outFolder filesep 'params.py']);
+                delete([par.outFolder filesep 'phy.log']);
             end
-            save(par.outFolder,'rez');
-            if par.useKiloSort3
-                rezToPhy2(rez, par.outFolder);
-            else
-                rezToPhy(rez, par.outFolder);
+            rezToPhy2(rez, par.outFolder);
+
+            %save settings file
+            disp(['Saving options file in ' par.outFolder filesep 'ops.mat']);
+            save([par.outFolder filesep 'ops.mat'],'ops');
+            
+            if ~par.loadPreClustering
+                delete(tmpSaveFile);
             end
-            delete([tmpSaveFile '.mat']);
         end
-        
+
         function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart)
             spkData=[];
             if nargin==1
@@ -566,6 +571,9 @@ classdef (Abstract) dataRecording < handle
 
             if nargin==3
                 t=t+tStart;
+            end
+            if min(ic(1,:))==0
+                ic(1,:)=ic(1,:)+1;
             end
             fprintf('Saving results to %s\n',saveFileValid);
             save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
