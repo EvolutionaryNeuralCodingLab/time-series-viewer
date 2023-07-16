@@ -1009,21 +1009,30 @@ classdef (Abstract) dataRecording < handle
                 fidM=fopen(metaDataFile,'w');
                 fprintf(fidM,'nSavedChans = %d\n',numel(electrodeCh));
                 fprintf(fidM,'sRateHz = %.12f\n',obj.samplingFrequency(1));
-                fprintf(fidM,'sRateAnalogHz = %.12f\n',obj.samplingFrequencyAnalog(1));
                 fprintf(fidM,'nChans = %d\n',numel(electrodeCh));
                 outputstr = ['%d' repmat(',%d', 1, numel(par.newElectrodeChNumbers)-1)]; % replicate it to match the number of columns
                 fprintf(fidM,['channelNumbers = ', outputstr, '\n'], par.newElectrodeChNumbers);
-                outputstr = ['%d' repmat(',%d', 1, numel(par.newAnalogChNumbers)-1)]; % replicate it to match the number of columns
-                fprintf(fidM,['channelNumbersAnalog = ', outputstr, '\n'], par.newAnalogChNumbers);
+
+                fprintf(fidM,'nAnalogChans = %d\n',numel(obj.analogChannelNumbers));
+                if nAnalog>0
+                    fprintf(fidM,'sRateAnalogHz = %.12f\n',obj.samplingFrequencyAnalog(1));
+                    outputstr = ['%d' repmat(',%d', 1, numel(par.newAnalogChNumbers)-1)]; % replicate it to match the number of columns
+                    fprintf(fidM,['channelNumbersAnalog = ', outputstr, '\n'], par.newAnalogChNumbers);
+                    fprintf(fidM,'scaleAnalog = %.12f\n',obj.MicrovoltsPerADAnalog(1));
+                    fprintf(fidM,'zeroADValueAnalog = %.12f\n',obj.ZeroADValueAnalog(1));
+                else
+                    fprintf(fidM,'sRateAnalogHz = []');
+                    fprintf(fidM,'channelNumbersAnalog = []');
+                    fprintf(fidM,'scaleAnalog = []');
+                    fprintf(fidM,'zeroADValueAnalog = []');
+                end
 
                 fprintf(fidM,'nTriggerChans = %d\n',numel(nT));
-                fprintf(fidM,'nAnalogChans = %d\n',numel(obj.analogChannelNumbers));
                 fprintf(fidM,'vcDataType = %s\n',par.targetDataType);
 
                 fprintf(fidM,'scale = %.12f\n',obj.MicrovoltsPerAD(1));
                 fprintf(fidM,'zeroADValue = %.12f\n',obj.ZeroADValue(1));
-                fprintf(fidM,'scaleAnalog = %.12f\n',obj.MicrovoltsPerADAnalog(1));                
-                fprintf(fidM,'zeroADValueAnalog = %.12f\n',obj.ZeroADValueAnalog(1));
+
 
                 fprintf(fidM,'vcProbe = %s\n',obj.layoutName);
                 fclose(fidM);
