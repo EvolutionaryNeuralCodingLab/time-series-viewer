@@ -1021,10 +1021,10 @@ classdef (Abstract) dataRecording < handle
                     fprintf(fidM,'scaleAnalog = %.12f\n',obj.MicrovoltsPerADAnalog(1));
                     fprintf(fidM,'zeroADValueAnalog = %.12f\n',obj.ZeroADValueAnalog(1));
                 else
-                    fprintf(fidM,'sRateAnalogHz = []');
-                    fprintf(fidM,'channelNumbersAnalog = []');
-                    fprintf(fidM,'scaleAnalog = []');
-                    fprintf(fidM,'zeroADValueAnalog = []');
+                    fprintf(fidM,'sRateAnalogHz = []\n');
+                    fprintf(fidM,'channelNumbersAnalog = []\n');
+                    fprintf(fidM,'scaleAnalog = []\n');
+                    fprintf(fidM,'zeroADValueAnalog = []\n');
                 end
 
                 fprintf(fidM,'nTriggerChans = %d\n',numel(nT));
