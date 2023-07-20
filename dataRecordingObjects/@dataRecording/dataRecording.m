@@ -299,6 +299,7 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'tStart',0,@isnumeric); % in milliseconds
             addParameter(parseObj,'tEnd',Inf,@isnumeric); % in milliseconds
             addParameter(parseObj,'correctDrift',1,@isnumeric); % if to run drift correction (in any case drift will be examined)
+            addParameter(parseObj,'ops',[]); % a structure with parameters
             addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
             addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
             addParameter(parseObj,'loadPreClustering',0,@isnumeric); % load pre clustering data.
@@ -323,6 +324,7 @@ classdef (Abstract) dataRecording < handle
             ops.NchanTOT  = numel(obj.channelNumbers); % (pre-processing) total number of channels in your recording
             ops.fproc   = fullfile(rootH,['temp_wh_' recID '.dat']); % proc file on a fast SSD
             ops.fbinary = fullfile(obj.recordingDir, obj.dataFileNames{1});
+
             ops.fs = obj.samplingFrequency(1)*1.5;% sample rate
             ops.fshigh = 300;% frequency for high pass filtering (150)
             ops.fslow = 3000; % frequency for low pass filtering (optional)
@@ -343,7 +345,7 @@ classdef (Abstract) dataRecording < handle
             %(extract_spikes)
             ops.Th = [25 20];% Thresholds on spike detection used during the optimization Th(1) or during the final pass Th(2). These thresholds are applied to the template projections, not to the voltage. Typically, Th(1) is high enough that the algorithm only picks up sortable units, while Th(2) is low enough that it can pick all of the spikes of these units. It doesn't matter if the final pass also collects noise: an additional per neuron threshold is set afterwards, and a splitting step ensures clusters with multiple units get split.
 
-            %ops.Nfilt               = 
+            %ops.Nfilt               =
             % 1024; % max number of clusters
             ops.nNeigh              = 32; %For visualization only - number of neighboring templates to retain projections (default 16).
             ops.nfilt_factor        = 32; % max number of clusters per good channel (even temporary ones)
@@ -363,6 +365,12 @@ classdef (Abstract) dataRecording < handle
             % ops.reorder         = 1;       % whether to reorder batches for drift correction. (changing the settings below can lead to fatal errors!!!)
             ops.nskip           = 25;  % how many batches to skip for determining spike PCs (changing the settings below can lead to fatal errors!!!)
             ops.nPCs                = 3; % how many PCs to project the spikes into (changing the settings below can lead to fatal errors!!!)
+            if ~isempty(par.ops)
+                fields = fieldnames(par.ops);
+                for i = 1:length(fields)
+                    ops.(fields{i}) = par.ops.(fields{i})
+                end
+            end
 
             if ~strcmp(class(obj),'binaryRecording') %check if this is a binary recording.
                 fprintf('\nKilosort can only run on binary files, use the export2Binary method to first convert the data.\n Then switch to the binaryRecording object and run again\n');return;
