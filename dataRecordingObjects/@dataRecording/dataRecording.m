@@ -368,7 +368,7 @@ classdef (Abstract) dataRecording < handle
             if ~isempty(par.ops)
                 fields = fieldnames(par.ops);
                 for i = 1:length(fields)
-                    ops.(fields{i}) = par.ops.(fields{i})
+                    ops.(fields{i}) = par.ops.(fields{i});
                 end
             end
 

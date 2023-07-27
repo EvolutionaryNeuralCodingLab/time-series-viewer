@@ -503,8 +503,7 @@ end
             nActFrames=numel(pFrames);
             nFrames=AVG.Params.window/1000*AVG.Params.frameRate;
             if nActFrames<nFrames-1 %can happen if the there is no video (of full video during the relevant times
-                msgbox(['Missing frames in segment or sampling rate missmatch! video exists between ' num2str(AVG.Params.triggerFrameSync(1)) ' - ' num2str(AVG.Params.triggerFrameSync(end))],'Attention','error','replace');
-                return;
+                fprintf('Warning: Missing %d frame triggers in segment or sampling rate missmatch!\nNotice that video exists between %fms-%fms\n',nFrames-nActFrames,AVG.Params.triggerFrameSync(1),AVG.Params.triggerFrameSync(end));
             end
             hTmp=line(AVG.hMainFigure.hMainAxis,[0 0],AVG.hMainFigure.hMainAxis.YLim,'color','r');
             hold(AVG.hVideoSyncFigure.hVideoAxis,'on');
