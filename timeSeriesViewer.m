@@ -161,14 +161,14 @@ end
                 AVG.Params.startTime-AVG.Params.filterPadding,AVG.Params.window+2*AVG.Params.filterPadding);
             for i=AVG.Params.selectedAnalysis
                 if i==1 %case filter
-                    [AVG.plotData.M]=AVG.filterObj.getFilteredData(AVG.plotData.M);
+                    [AVG.plotData.M,AVG.plotData.T]=AVG.filterObj.getFilteredData(AVG.plotData.M);
                 else
                     feval(AVG.Params.analysisMethods{i},AVG.plotData);
                 end
             end
             %implement a cut edges method for the parent class
-            AVG.plotData.M=AVG.plotData.M(:,:,AVG.Params.paddingSamples+1:end-AVG.Params.paddingSamples);
-            AVG.plotData.T=AVG.plotData.T(1:end-AVG.Params.paddingSamples*2); %the first time is 0
+            AVG.plotData.M=AVG.plotData.M(:,:,round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor) +1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor));
+            AVG.plotData.T=AVG.plotData.T(1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor)*2); %the first time is 0
         else
             [AVG.plotData.M,AVG.plotData.T]=AVG.recordingObj.getData(...
                 AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces),AVG.Params.startTime,AVG.Params.window);
