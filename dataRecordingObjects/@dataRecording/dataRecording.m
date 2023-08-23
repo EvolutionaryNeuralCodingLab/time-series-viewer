@@ -51,6 +51,138 @@ classdef (Abstract) dataRecording < handle
         signalBits % the quantization of the sampling card
         numberOfCharFromEndToBaseName %the number of characters from the end of the file name to get to the base file name
     end
+
+    methods (Static)
+        function concatenateBinaryFormat(binaryFileNames,varargin)
+            parseObj = inputParser;
+            parseObj.FunctionName='concatenateBinaryFormat';
+            addRequired(parseObj,'binaryFileNames',@iscellstr);
+            addParameter(parseObj,'targetFileBase',[],@ischar); % in milliseconds
+            if numel(varargin)==1
+                disp(parseObj.Results);
+                return;
+            end
+            parseObj.parse(binaryFileNames,varargin{:});
+            %make parameter structure
+            par=parseObj.Results;
+
+            disp('checking that file names are valid');
+            if isempty(binaryFileNames)
+                fprintf('Files to merge are not provided in the first argument. Aborting...\n');
+                return;
+            else
+                for i=1:numel(binaryFileNames)
+                    %Verify that target extension is "bin" or "dat"
+                    if ~any(strcmp(binaryFileNames{i}(end-3:end),'.bin'))
+                        error('input files should have a ''.bin'' extension');
+                    end
+                end
+            end
+            if isempty(par.targetFileBase)
+                par.targetFileBase=[cd filesep 'mergedBinary.bin'];
+                fprintf('Target file name not entered! Using this: %s\n',par.targetFileBase);
+            end
+
+            %create a folder if target folder does not exist
+            [folderName,FileName]=fileparts(par.targetFileBase);
+            if ~isfolder(folderName)
+                fprintf('Notice the folder you entered does not exist!!! Creating new folder: %s\n',folderName);
+                mkdir(folderName);
+            end
+
+            outMeta=[par.targetFileBase(1:end-4) '_meta.txt'];
+            outAnalog=[par.targetFileBase(1:end-4) '_Analog' par.targetFileBase(end-3:end)];
+            outTriggers=[par.targetFileBase(1:end-4) '_Triggers.bin'];
+
+            %check if target files exist and if so abort
+            if isfile(outMeta) ||...
+                    isfile(outAnalog) ||...
+                    isfile(par.targetFileBase) ||...
+                    isfile(outTriggers)
+                error('Target files exist. Please  delete target files and run again!')
+            end
+
+            %verify that meta data files are identical
+            checkF1 = javaObject('java.io.File', [binaryFileNames{1}(1:end-4) '_meta.txt']);
+            for i=2:numel(binaryFileNames)
+                checkF2 = javaObject('java.io.File', [binaryFileNames{i}(1:end-4) '_meta.txt']);
+                is_equal = javaMethod('contentEquals','org.apache.commons.io.FileUtils',checkF1, checkF2);
+                if ~is_equal
+                    error('meta data files for the different recordings are not identical. Aborting merge!');
+                end
+            end
+
+            %Merging triggers.
+
+            %go over triggers and merge time stamps for each
+            fidMeta = fopen([binaryFileNames{1}(1:end-4) '_meta.txt']);
+            TextAsCells = textscan(fidMeta, '%s = %s','TextType','string','Delimiter',' = ');
+            nTriggersCh = str2double(TextAsCells{2}{strcmp(TextAsCells{:,1},"nTriggerChans")});
+            nChans = str2double(TextAsCells{2}{strcmp(TextAsCells{:,1},"nChans")});
+            fclose(fidMeta);
+
+            %open files for read and write
+            fidTargetTrig = fopen(outTriggers, 'w');
+            for i=1:numel(binaryFileNames)
+                tmpFile=[binaryFileNames{i}(1:end-4) '_Triggers.bin'];
+                if exist(tmpFile,'file')
+                    fid(i)=fopen(tmpFile,'r');
+                    nTriggers(:,i)=double(fread(fid(i),nTriggersCh,'*uint32')-1);
+                else
+                    error('Some trigger files are missing! Aborting!');
+                end
+
+                fidData=fopen(binaryFileNames{i},'r');
+                fseek(fidData, 0, 'eof');
+                position = ftell(fidData);
+                nTotSamplesRecording(i)=floor(position/2/nChans); %2 bytes per sample
+                fclose(fidData);
+            end
+            sampleAddition_unit32=[0 cumsum(nTotSamplesRecording(1:end-1))];
+
+            for i=1:nTriggersCh
+                for j=1:numel(binaryFileNames)
+                    if nTriggers(i,j)~=0
+                        tmp=fread(fid(j),nTriggers(i,j),'*uint32');
+                        fwrite(fidTargetTrig,tmp+uint32(sampleAddition_unit32(j)),'*uint32');
+                    end
+                end
+            end
+
+            fclose(fidTargetTrig);
+            for i=1:numel(binaryFileNames)
+                fclose(fid(i));
+            end
+
+            %create new meta data file which is identical to the original files.
+            copyfile([binaryFileNames{1}(1:end-4) '_meta.txt'],outMeta);
+
+            %merge analog files and data files
+            fprintf('Starting to copy files...\nImportant!!! Matlab command while files are still being copied in the background!\n')
+            if isunix
+                systemStrData=['cat'];
+                systemStrDataAnalog=['cat'];
+                for i=1:numel(binaryFileNames)
+                    systemStrData=[systemStrData ' ' binaryFileNames{i}];
+                    systemStrDataAnalog=[systemStrDataAnalog ' ' binaryFileNames{i}(1:end-4) '_Analog' binaryFileNames{i}(end-3:end)];
+                end
+                [status,cmdout] = system([systemStrData ' > ' par.targetFileBase],'-echo');
+                [status,cmdout] = system([systemStrDataAnalog ' > ' outAnalog],'-echo');
+
+            elseif IsWindows
+                systemStrData=['copy ' binaryFileNames{1} '/b'];
+                systemStrDataAnalog=['copy ' binaryFileNames{1}(1:end-4) '_Analog' binaryFileNames{1}(end-3:end) '/b'];
+                for i=2:numel(binaryFileNames)
+                    systemStrData=[systemStrData '+' binaryFileNames{i} '/b'];
+                    systemStrDataAnalog=[systemStrDataAnalog '+' binaryFileNames{i}(1:end-4) '_Analog' binaryFileNames{i}(end-3:end) '/b'];
+                end
+                [status,cmdout] = system([systemStrData ' ' par.targetFileBase],'-echo');
+                [status,cmdout] = system([systemStrDataAnalog ' ' outAnalog],'-echo');
+            end
+
+        end
+    end
+
     methods
         function delete(obj) %closing all open files when object is deleted
             obj=closeOpenFiles(obj);
@@ -1157,4 +1289,4 @@ classdef (Abstract) dataRecording < handle
         end
 
     end
-end 
+end

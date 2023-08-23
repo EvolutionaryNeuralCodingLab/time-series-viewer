@@ -161,6 +161,7 @@ classdef binaryRecording < dataRecording
         
         function [T_ms]=getTrigger(obj,startTime_ms,window_ms,name)
             %Extract triggers from recording
+            %triggers are ordered such that the first uint32 is the number of triggers in each channel (this is a vector with the length of trigger channels), and the rest are all the triggers.  Channels are either given explicitly or order 1:nTriggers.
             %Usage : [T_ms]=obj.getTrigger(,startTime_ms,window_ms,name)
             %Input : startTime_ms - start time [ms].
             %        window_ms - the window duration [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
