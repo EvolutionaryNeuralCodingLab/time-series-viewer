@@ -153,7 +153,7 @@ function obj=extractMetaData(obj)
     
     %13.0 
     
-    obj.chLayoutNumbers = metaAP.snsShankMap; %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
+    obj.chLayoutNumbers = metaAP.snsChanMap; %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
 
     obj.chLayoutNames = (mat2cell(chans,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
     
