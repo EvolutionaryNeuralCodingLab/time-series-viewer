@@ -60,29 +60,34 @@ classdef binaryRecording < dataRecording
             startSample=round(startTime_ms*conversionFactor);
             nTrials=length(startTime_ms);
             V_uV=ones(numel(channels),nTrials,windowSamples,obj.datatype);
-                        
+
             for i=1:nTrials
                 if startTime_ms(i)>=0 && (startTime_ms(i)+window_ms)<=obj.recordingDuration_ms
-                    fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels,'bof');
-                    data = fread(obj.fid,obj.totalChannels*windowSamples,['*' obj.datatype]);
-                    data = reshape(data, obj.totalChannels,windowSamples);
-                    V_uV(:,i,:)=data(channels,:);
+                    if numel(channels)~=1
+                        fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels,'bof');
+                        data = fread(obj.fid,obj.totalChannels*windowSamples,['*' obj.datatype]);
+                        data = reshape(data, obj.totalChannels,windowSamples);
+                        V_uV(:,i,:)=data(channels,:);
+                    else
+                        fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels+(channels-1)*obj.bytesPerSample,'bof');
+                        V_uV(:,i,:) = fread(obj.fid,windowSamples,['*' obj.datatype],(obj.totalChannels-1)*obj.bytesPerSample);
+                    end
                 else
                     startSampleTmp=min(0,startSample(i));
                     endSampleTmp=min(windowSamples,obj.nTotSamples-startSample(i)); %end sample in window (not in recroding)
-                    
+
                     startSampleRec=max(0,startSample(i));
                     endSampleRec=min(startSample(i)+windowSamples,obj.nTotSamples);
-                    
+
                     fseek(obj.fid,startSampleRec*obj.bytesPerSample*obj.totalChannels,'bof');
                     data = fread(obj.fid,(endSampleRec-startSampleRec)*obj.totalChannels,['*' obj.datatype]);
                     data = reshape(data, obj.totalChannels,endSampleRec-startSampleRec);
-                    
+
                     V_uV(:,i,1-startSampleTmp:endSampleTmp)=data(channels,:);
                     disp('Recording at edge');
                 end
             end
-            
+
             if obj.convertData2Double
                 V_uV = (double(V_uV) - obj.ZeroADValue) * obj.MicrovoltsPerAD;
             end
