@@ -38,6 +38,10 @@ function obj=extractMetaData(obj)
 
     end % ReadMeta
 
+if iscell(path_r)
+    path_r = cell2mat(path_r);
+end
+
 
     file = dir (path_r);
     filenames = {file.name};
