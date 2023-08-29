@@ -32,9 +32,9 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         t0= startTime_ms(trials)/1000;
         samp0 = round(t0*str2double(meta.imSampRate));
     
-        dataArray = ReadBin(samp0, nSamp, meta, binName, path);
+        dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path);
         
-        dataArray = dataArray(chanList,:);
+        dataArray = dataArray(1:length(channels),:);
         
         if obj.convertData2Double
              V_uV(:,trials,:) = GainCorrectIM(dataArray*1000000, chanList, meta);
@@ -118,29 +118,44 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
 %
 % IMPORTANT: samp0 and nSamp must be integers.
 %
-    function dataArray = ReadBin(samp0, nSamp, meta, binName, path)
+    function dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path)
 
-        nChan = str2double(meta.nSavedChans);
+        %nChan = str2double(meta.nSavedChans);
 
+        nChan = length(channels);
+        
+        %Determine window in samples
         nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
         samp0 = max(samp0, 0);
         nSamp = min(nSamp, nFileSamp - samp0);
-
-        sizeA = [nChan, nSamp];
-
-        fid = fopen(fullfile(path, binName), 'rb');
-        fseek(fid, samp0 * 2 * nChan, 'bof');
         
-        if obj.convertData2Double
-            dataArray = fread(fid, sizeA, 'int16=>double');
-        else
-            dataArray = fread(fid, sizeA, 'int16');
-        end
+        %Determine size of section
+        sizeA = [nChan, nSamp];
+        
+        % Initialize an empty array to store the data
+        dataArray = [];
+        
+        % Open the file
+        fid = fopen(fullfile(path, binName), 'rb');
+
+        for i=1:nChan
+        
+            fseek(fid, samp0 * 2 *(channels(i)-1), 'bof');
+       
+            %fseek(fid, samp0 * 2 * nChan, 'bof');
+
+            if obj.convertData2Double
+                sectionData  = fread(fid, [1 nSamp],'int16');
+            else
+                sectionData  = fread(fid, [1 nSamp],'int16');
+            end
             
+            dataArray = [dataArray; sectionData];
+        end
         fclose(fid);
     end % ReadBin
 
-
+%plot(dataArray(1,:))
 % =========================================================
 % Return sample rate as double.
 %
