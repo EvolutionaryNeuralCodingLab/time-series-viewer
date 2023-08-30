@@ -119,7 +119,7 @@ classdef NPAPRecording < dataRecording
                 disp('Object was not constructed since too many parameters were given at construction');
                 return;
             end
-            %obj=obj.getRecordingFiles(recordingFolder);
+            obj=obj.getRecordingFiles(recordingFolder);
             obj.recordingDir = recordingFolder;
             
             if exist(obj.metaDataFile,'file') && ~obj.overwriteMetaData

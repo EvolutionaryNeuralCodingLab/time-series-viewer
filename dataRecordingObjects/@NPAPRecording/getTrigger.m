@@ -1,4 +1,3 @@
-            
 function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
             
     syncdir = string(obj.recordingDir) + filesep + "sync_events"; %Determine dir. 
@@ -12,7 +11,7 @@ function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
     
     chNumber = 1:length(T_ms);
 
-    j =1;
+syncdir = string(obj.recordingDir) + filesep + "sync_events"; %Determine dir.
 
     for n =1:length(filenames)
     
@@ -72,5 +71,5 @@ function [T_ms,chNumber]=getTrigger(obj,startTime_ms,window_ms)
 %     end
 %     
 end
-             
+                 
   

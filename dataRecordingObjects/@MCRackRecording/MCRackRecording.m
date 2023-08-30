@@ -18,7 +18,6 @@ classdef MCRackRecording < dataRecording
         nRecordings %number of recordings
         %}
         includeDigitalDataInTriggers=1;
-        includeOnlyDigitalDataInTriggers=0;
         maxNumberOfDigitalChannels=4;
     end
     properties (Constant, Hidden)
@@ -52,8 +51,6 @@ classdef MCRackRecording < dataRecording
         channelID
         number2ID
         ID2number
-        ZeroADValueAnalog
-        MicrovoltsPerADAnalog
         SweepStartTime
         SweepStopTime
         fileOpenStruct

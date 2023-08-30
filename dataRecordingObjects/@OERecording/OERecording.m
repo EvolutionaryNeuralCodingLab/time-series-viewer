@@ -357,9 +357,13 @@ classdef OERecording < dataRecording
                     pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
                     pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
                 end
-                
+
 
             else %for old recordings or recordigns with no settings files
+                obj.eventFileName='all_channels.events';
+                channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
+                channelFiles={channelFiles.name};
+                dataFileStrings=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
                 nFields=numel(dataFileStrings{1});
                 if nFields==2
                     recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);

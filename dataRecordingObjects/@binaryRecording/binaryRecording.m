@@ -60,29 +60,34 @@ classdef binaryRecording < dataRecording
             startSample=round(startTime_ms*conversionFactor);
             nTrials=length(startTime_ms);
             V_uV=ones(numel(channels),nTrials,windowSamples,obj.datatype);
-                        
+
             for i=1:nTrials
                 if startTime_ms(i)>=0 && (startTime_ms(i)+window_ms)<=obj.recordingDuration_ms
-                    fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels,'bof');
-                    data = fread(obj.fid,obj.totalChannels*windowSamples,['*' obj.datatype]);
-                    data = reshape(data, obj.totalChannels,windowSamples);
-                    V_uV(:,i,:)=data(channels,:);
+                    if numel(channels)~=1
+                        fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels,'bof');
+                        data = fread(obj.fid,obj.totalChannels*windowSamples,['*' obj.datatype]);
+                        data = reshape(data, obj.totalChannels,windowSamples);
+                        V_uV(:,i,:)=data(channels,:);
+                    else
+                        fseek(obj.fid,startSample(i)*obj.bytesPerSample*obj.totalChannels+(channels-1)*obj.bytesPerSample,'bof');
+                        V_uV(:,i,:) = fread(obj.fid,windowSamples,['*' obj.datatype],(obj.totalChannels-1)*obj.bytesPerSample);
+                    end
                 else
                     startSampleTmp=min(0,startSample(i));
                     endSampleTmp=min(windowSamples,obj.nTotSamples-startSample(i)); %end sample in window (not in recroding)
-                    
+
                     startSampleRec=max(0,startSample(i));
                     endSampleRec=min(startSample(i)+windowSamples,obj.nTotSamples);
-                    
+
                     fseek(obj.fid,startSampleRec*obj.bytesPerSample*obj.totalChannels,'bof');
                     data = fread(obj.fid,(endSampleRec-startSampleRec)*obj.totalChannels,['*' obj.datatype]);
                     data = reshape(data, obj.totalChannels,endSampleRec-startSampleRec);
-                    
+
                     V_uV(:,i,1-startSampleTmp:endSampleTmp)=data(channels,:);
                     disp('Recording at edge');
                 end
             end
-            
+
             if obj.convertData2Double
                 V_uV = (double(V_uV) - obj.ZeroADValue) * obj.MicrovoltsPerAD;
             end
@@ -161,6 +166,7 @@ classdef binaryRecording < dataRecording
         
         function [T_ms]=getTrigger(obj,startTime_ms,window_ms,name)
             %Extract triggers from recording
+            %triggers are ordered such that the first uint32 is the number of triggers in each channel (this is a vector with the length of trigger channels), and the rest are all the triggers.  Channels are either given explicitly or order 1:nTriggers.
             %Usage : [T_ms]=obj.getTrigger(,startTime_ms,window_ms,name)
             %Input : startTime_ms - start time [ms].
             %        window_ms - the window duration [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
@@ -178,8 +184,10 @@ classdef binaryRecording < dataRecording
         end
         
         function obj=closeOpenFiles(obj)
-            fclose(obj.fid);
-            if obj.fidAnalog>0
+            if numel(obj.fid)>0
+                fclose(obj.fid);
+            end
+            if numel(obj.fidAnalog)>0
                 fclose(obj.fidAnalog);
             end
         end
@@ -187,46 +195,70 @@ classdef binaryRecording < dataRecording
         function [obj]=extractMetaData(obj)
             %get data from meta file (jrclust fields)
             %The following fields are required: 'sRateHz','scale','nChans'
+            requiredFields={'sRateHz','scale','zeroADValue','nChans','vcDataType','nAnalogChans','nTriggerChans'};
+            optionalFields={'sRateAnalogHz','scaleAnalog','zeroADValueAnalog','channelNumbersAnalog','vcProbe','channelNumbers','triggerNames'};
+
             metaFileName=obj.recordingName;
             fullMetaFileName=[obj.recordingDir filesep metaFileName '_meta.txt'];
             if exist(fullMetaFileName,'file')
                 fidMeta=fopen(fullMetaFileName,'r');
                 metaData = textscan(fidMeta,'%s = %s','TextType','string','Delimiter',' = ');  %'Whitespace','',
                 fclose(fidMeta);
-                
-                for i=1:size(metaData{1},1)
-                    if any(isletter(metaData{2}{i}))
-                        T.(metaData{1}{i})=metaData{2}{i};
-                    else
-                        T.(metaData{1}{i})=str2num(metaData{2}{i});
+                try
+                    for i=1:size(metaData{1},1)
+                        if any(isletter(metaData{2}{i}))
+                            T.(metaData{1}{i})=metaData{2}{i};
+                        else
+                            T.(metaData{1}{i})=str2num(metaData{2}{i});
+                        end
                     end
-                end
-                obj.samplingFrequency=T.sRateHz;
-                obj.samplingFrequencyAnalog=T.sRateAnalogHz;
-                obj.MicrovoltsPerAD=T.scale;
-                obj.MicrovoltsPerADAnalog=T.scaleAnalog;
-                obj.ZeroADValue=T.zeroADValue;
-                obj.ZeroADValueAnalog=T.zeroADValueAnalog;
-                obj.totalChannels=T.nChans;
-                obj.datatype=T.vcDataType;
-                obj.totalAnalogChannels=T.nAnalogChans;
-                obj.triggerNames=mat2cell(1:T.nTriggerChans,1,ones(1,T.nTriggerChans));
-                if isfield(T,'channelNumbersAnalog') %for legacy version when channelNumbersAnalog was not saved
-                    obj.analogChannelNumbers=1:T.nAnalogChans;
-                end
-                obj.channelNumbers=T.channelNumbers;
-                obj.channelNames=cellfun(@(x) num2str(x),mat2cell(obj.channelNumbers,1,ones(1,numel(obj.channelNumbers))),'UniformOutput',0); %
-                obj.analogChannelNames=cellfun(@(x) num2str(x),mat2cell(obj.analogChannelNumbers,1,ones(1,numel(obj.analogChannelNumbers))),'UniformOutput',0);
+                    obj.samplingFrequency=T.sRateHz;
+                    obj.MicrovoltsPerAD=T.scale;
+                    obj.ZeroADValue=T.zeroADValue;
+                    obj.totalChannels=T.nChans;
+                    obj.datatype=T.vcDataType;
+                    obj.totalAnalogChannels=T.nAnalogChans;
 
-                if isfield(T,'vcProbe')
-                    %if numel(T.vcProbe)<7
-                    %    error('Probe name should have the prefix "Layout_". Please correct and run again.');
-                    %end
-                    if strcmp(T.vcProbe(1:min(7,numel(T.vcProbe))),'Layout_')
-                        obj=obj.loadChLayout(T.vcProbe(8:end));%remove the layout ending
+                    if isfield(T,'channelNumbers')
+                        obj.channelNumbers=T.channelNumbers;
                     else
-                        obj=obj.loadChLayout(T.vcProbe);%remove the layout ending
+                        obj.channelNumbers=1:obj.totalChannels;
                     end
+                    obj.channelNames=cellfun(@(x) num2str(x),mat2cell(obj.channelNumbers,1,ones(1,numel(obj.channelNumbers))),'UniformOutput',0); %
+
+                    if obj.totalAnalogChannels>0
+                        if isfield(T,'channelNumbersAnalog') %for legacy version when channelNumbersAnalog was not saved
+                            obj.analogChannelNumbers=1:T.channelNumbersAnalog;
+                        else
+                            obj.analogChannelNumbers=1:T.nAnalogChans;
+                        end
+                        obj.samplingFrequencyAnalog=T.sRateAnalogHz;
+                        obj.analogChannelNames=cellfun(@(x) num2str(x),mat2cell(obj.analogChannelNumbers,1,ones(1,numel(obj.analogChannelNumbers))),'UniformOutput',0);
+                        obj.MicrovoltsPerADAnalog=T.scaleAnalog;
+                        obj.ZeroADValueAnalog=T.zeroADValueAnalog;
+                    end
+                    if isfield(T,'triggerNames')
+                        obj.triggerNames=T.triggerNames;
+                    else
+                        obj.triggerNames=mat2cell(1:T.nTriggerChans,1,ones(1,T.nTriggerChans));
+                    end
+
+                    if isfield(T,'vcProbe')
+                        %if numel(T.vcProbe)<7
+                        %    error('Probe name should have the prefix "Layout_". Please correct and run again.');
+                        %end
+                        if strcmp(T.vcProbe(1:min(7,numel(T.vcProbe))),'Layout_') || strcmp(T.vcProbe(1:min(7,numel(T.vcProbe))),'layout_')
+                            obj=obj.loadChLayout(T.vcProbe(8:end));%remove the layout ending
+                        else
+                            obj=obj.loadChLayout(T.vcProbe);%remove the layout ending
+                        end
+                    end
+                catch ME
+                    fprintf('Could not extract all fiels from meta data. Necessary fields are:\n');
+                    disp(requiredFields);
+                    fprintf('Optional fields are:\n');
+                    disp(optionalFields);
+                    rethrow(ME);
                 end
                 %check the number of samples in the binary file
                 fid=fopen([obj.recordingDir filesep obj.dataFileNames{1}],'r');
@@ -234,12 +266,12 @@ classdef binaryRecording < dataRecording
                 position = ftell(fid);
                 obj.nTotSamples=floor(position/2/obj.totalChannels);
                 fclose(fid);
-                
+
                 obj.recordingDuration_ms=obj.nTotSamples/obj.samplingFrequency(1)*1000;
                 disp('saving meta data');
                 obj.saveMetaData;
             else
-                error('could not read meta data file (.meta) for recording, data object not created!!!');
+                error(['Could find the meta data file: ' fullMetaFileName '...data object not created!!!']);
             end
         end
     end
@@ -268,11 +300,11 @@ classdef binaryRecording < dataRecording
                 clear recordingFile;
                 recordingFile{1}=tmp;
             end
-            if ~any(strcmp(recordingFile{1}(end-2:end),{'bin','dat'}))
+            obj=obj.getRecordingFiles(recordingFile,obj.fileExtension);
+
+            if ~any(strcmp(obj.dataFileNames{1}(end-2:end),{'bin','dat'}))
                 warning('Recording file is not given, this may create errors, please provide a *.bin filename');
             end
-            obj=obj.getRecordingFiles(recordingFile,obj.fileExtension);
-            
             if isfile([obj.metaDataFile,'.mat']) && ~obj.overwriteMetaData
                 obj=loadMetaData(obj);
             else
