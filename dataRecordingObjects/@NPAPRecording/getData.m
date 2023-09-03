@@ -120,9 +120,9 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
 %
     function dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path)
 
-        %nChan = str2double(meta.nSavedChans);
+        nChan = str2double(meta.nSavedChans);
 
-        nChan = length(channels);
+        %nChan = length(channels);
         
         %Determine window in samples
         nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
@@ -133,25 +133,33 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         sizeA = [nChan, nSamp];
         
         % Initialize an empty array to store the data
-        dataArray = [];
+        
         
         % Open the file
         fid = fopen(fullfile(path, binName), 'rb');
 
-        for i=1:nChan
-        
-            fseek(fid, samp0 * 2 *(channels(i)-1), 'bof');
-       
-            %fseek(fid, samp0 * 2 * nChan, 'bof');
+        if length(channels) ~=1
+
+            fseek(fid, samp0 * 2 * nChan, 'bof');
 
             if obj.convertData2Double
-                sectionData  = fread(fid, [1 nSamp],'int16');
+                dataArray  = fread(fid,sizeA,'int16=>double');
             else
-                sectionData  = fread(fid, [1 nSamp],'int16');
+                dataArray  = fread(fid, sizeA,'int16');
             end
-            
-            dataArray = [dataArray; sectionData];
+        
+        else %One channel
+        
+            fseek(fid, samp0 * 2 * nChan+(channels-1)*2, 'bof');
+
+             if obj.convertData2Double
+                dataArray  = fread(fid,[1, nSamp],'int16',(nChan-1)*2);
+            else
+                dataArray  = fread(fid,[1, nSamp],'int16');
+            end
+        
         end
+            
         fclose(fid);
     end % ReadBin
 
