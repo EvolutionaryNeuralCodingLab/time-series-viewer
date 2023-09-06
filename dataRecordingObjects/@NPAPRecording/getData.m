@@ -34,7 +34,10 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
     
         dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path);
         
-        dataArray = dataArray(1:length(channels),:);
+        dataArray = dataArray(channels,:);
+
+%         figure()
+%         plot(dataArray(1,:))
         
         if obj.convertData2Double
              V_uV(:,trials,1:length(dataArray)) = GainCorrectIM(dataArray*1000000, chanList, meta); 
@@ -161,9 +164,13 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         end
             
         fclose(fid);
+
+%         figure()
+%         plot(dataArray(250,:))
+%         title("ch 250 several chans")
     end % ReadBin
 
-%plot(dataArray(1,:))
+
 % =========================================================
 % Return sample rate as double.
 %
