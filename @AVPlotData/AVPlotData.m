@@ -124,7 +124,7 @@ classdef AVPlotData < handle
             end
             obj.plotParams=[];
             obj.hPlotAxis=hPlotAxis;
-            set(obj.hPlotAxis,'XTickMode','auto','YTickMode','auto');
+            set(obj.hPlotAxis,'XTickMode','auto','YTickMode','auto','yscale','lin');
             obj.hControlPanel=hControlPanel;
             obj.currentPlotIdx=strcmp(obj.plotNames,plotName);
             obj.(obj.plotCreateMethods{obj.currentPlotIdx});
