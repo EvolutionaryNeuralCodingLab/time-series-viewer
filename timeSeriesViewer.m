@@ -455,9 +455,20 @@ end
             if diffFrames==0
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0 1 0];
             elseif diffFrames>0
-                msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
-                    'Proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
-                AVG.Params.triggerFrameSync(round((1:diffFrames)/diffFrames*numel(AVG.Params.triggerFrameSync)))=[];
+                pogonaHunterCorrection=1;
+                if pogonaHunterCorrection==1
+                    msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming frames 4:last trig'},'Attention','error','replace');
+                    AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync(4: (numel(AVG.Params.triggerFrameSync)-diffFrames+3) );
+                elseif pogonaHunterCorrection==2
+                    msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming first frames were lost in video'},'Attention','error','replace');
+                    AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync(diffFrames: (numel(AVG.Params.triggerFrameSync)) );
+                else
+                    msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
+                    AVG.Params.triggerFrameSync(round((1:diffFrames)/diffFrames*numel(AVG.Params.triggerFrameSync)))=[];
+                end
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
             else
                 msgbox({['Found ' -num2str(diffFrames) ' more frames in video (' num2str(round(AVG.Params.nFramesVideo)) ') than in digital triggers!!!'],...
