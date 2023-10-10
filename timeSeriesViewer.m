@@ -436,8 +436,9 @@ end
             AVG.Params.videoDuration=AVG.Params.videoReader.Duration;
             AVG.Params.frameRate=AVG.Params.videoReader.FrameRate;
             AVG.Params.frameRateOriginal=AVG.Params.frameRate; % in some cases the video meta data is not correct. For some calculation the original value is still be important.
+            AVG.Params.frameRate=1000/median(diff(AVG.Params.currentTrigger(1:100)));
             AVG.hVideoSyncFigure.hFrameRateEdit.String=num2str(AVG.Params.frameRate);
-            AVG.Params.nFramesVideo=round(AVG.Params.videoDuration*AVG.Params.frameRate);
+            AVG.Params.nFramesVideo=round(AVG.Params.videoDuration*AVG.Params.frameRateOriginal);
 
             AVG.Params.triggerFrameSync=AVG.Params.currentTrigger;
 
@@ -447,7 +448,7 @@ end
                 if nFrameGaps==2 %this may happen when recording with reptiLearn
                     fprintf('Exactly two >1 sec gaps found in triggers. Removing irrelevant triggers before and after gaps\n');
                 elseif nFrameGaps>2
-                    fprintf('More than two >1 sec gaps found in triggers. Assuming relevant frames are betweewn the two gaps...\n');
+                    fprintf('More than two >1 sec gaps found in triggers. Assuming relevant frames are betweewn the first and second gaps...\n');
                 end
                 pStartEnd=find(diff(AVG.Params.triggerFrameSync)>1000 | diff(AVG.Params.triggerFrameSync)<-1000);
                 AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync((pStartEnd(1)+1):pStartEnd(2));
@@ -455,19 +456,31 @@ end
                 fprintf('One >1 sec gap found in triggers... Using all triggers for analysis!\n');
             end
 
-            diffFrames=numel(AVG.Params.triggerFrameSync)-round(AVG.Params.nFramesVideo);
-            if diffFrames==0
+            AVG.Params.diffFrames=numel(AVG.Params.triggerFrameSync)-round(AVG.Params.nFramesVideo);
+            AVG.Params.pSync=[];% the relevant places in AVG.Params.triggerFrameSync
+            if AVG.Params.diffFrames==0
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0 1 0];
-            elseif diffFrames>0
-                msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
-                    'Proceeding with analysis assuming frames 4:last trig'},'Attention','error','replace');
-                AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String=['4:' num2str((numel(AVG.Params.triggerFrameSync)-diffFrames+3))];
-                AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
-                CallbackValidSyncTriggers;
+            elseif AVG.Params.diffFrames>0
+                if AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String(1)=='0'
+                    msgbox({['Found ' num2str(AVG.Params.diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
+                    p2Remove=true(1,numel(AVG.Params.triggerFrameSync));
+                    p2Remove(round((1:AVG.Params.diffFrames)/AVG.Params.diffFrames*numel(AVG.Params.triggerFrameSync)))=false;
+                    AVG.Params.pSync=find(p2Remove);
+                else
+                    msgbox({['Found ' num2str(AVG.Params.diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming frames 1:numberOfFrames'},'Attention','error','replace');
+                    AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String=['1:' num2str((numel(AVG.Params.triggerFrameSync)-AVG.Params.diffFrames))];
+                    AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
+                    AVG.Params.pSync=str2num(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String);
+                end
             end
             AVG.Params.videoSyncVerified=true;
         end
     end
+
+
+
 
     function CallbackExportIMPlayPush(hObj,event)
         hObj.BackgroundColor=[1 0 0];
@@ -527,20 +540,9 @@ end
     end
 
     function CallbackValidSyncTriggers(hObj,event)
-        if ~isfield(AVG.Params,'triggerFrameSync')
-            disp('First check sync by pressing the button');
-        else
-            diffFrames=numel(AVG.Params.triggerFrameSync)-round(AVG.Params.nFramesVideo);
-            if AVG.Params.syncTriggerPlaces==0
-                msgbox({['Found ' num2str(diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
-                    'Proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
-                p2Remove=true(1,numel(AVG.Params.triggerFrameSync));
-                p2Remove(round((1:diffFrames)/diffFrames*numel(AVG.Params.triggerFrameSync)))=false;
-                AVG.Params.pSync=find(p2Remove);
-            else
-                AVG.Params.syncTriggerPlaces=str2num(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String);
-                AVG.Params.pSync=AVG.Params.syncTriggerPlaces;
-            end
+        AVG.Params.pSync=str2num(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String);
+        if AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String(1)=='0' %for uniformly distributing triggers
+            CallbackCheckSyncPush;
         end
     end
 
