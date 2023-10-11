@@ -388,7 +388,7 @@ end
             AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push', 'String','Load','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hLoadVideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox,'Style','edit', 'String','videoFileName','Callback',@CallbackLoadVideoEdit);
             AVG.hVideoSyncFigure.hCheckSyncPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackCheckSyncPush, 'Style','push', 'String','Check sync.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hValidSyncTriggersEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackValidSyncTriggers, 'Style','edit', 'String','0','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+            AVG.hVideoSyncFigure.hValidSyncTriggersEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackValidSyncTriggersEdit, 'Style','edit', 'String','0-for-uniform','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hFrameRateEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push', 'String','Run video','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
             AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push', 'String','Implay exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
@@ -461,7 +461,7 @@ end
             if AVG.Params.diffFrames==0
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0 1 0];
             elseif AVG.Params.diffFrames>0
-                if AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String(1)=='0'
+                if all(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String)=='0'
                     msgbox({['Found ' num2str(AVG.Params.diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
                         'Proceeding with analysis assuming uniform distribution of lost frames in video'},'Attention','error','replace');
                     p2Remove=true(1,numel(AVG.Params.triggerFrameSync));
@@ -539,7 +539,7 @@ end
         hObj.BackgroundColor=[0.8 0.8 0.8];
     end
 
-    function CallbackValidSyncTriggers(hObj,event)
+    function CallbackValidSyncTriggersEdit(hObj,event)
         AVG.Params.pSync=str2num(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String);
         if AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String(1)=='0' %for uniformly distributing triggers
             CallbackCheckSyncPush;
