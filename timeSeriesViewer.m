@@ -90,6 +90,8 @@ end
 for v=1:2:length(varargin)
     eval(['AVG.Params.' varargin{v} '=' 'varargin{v+1};'])
 end
+
+createIcons(); %create icons for GUI buttons
 %% %%%%%%%%%%%%%%%%%%%%%%%%%% Initialization  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %initialize params
@@ -370,31 +372,7 @@ end
 
     function addSyncVideo(hObj,event)
         if isempty(AVG.hVideoSyncFigure.hFigure) || ~isvalid(AVG.hVideoSyncFigure.hFigure)
-            AVG.hVideoSyncFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.4 AVG.hMainFigure.scrsz(4)*0.4 AVG.hMainFigure.scrsz(3)*0.58 AVG.hMainFigure.scrsz(4)*0.48], ...
-                'Name','Activity viewer - video sync', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','figure', 'HandleVisibility','off','CloseRequestFcn',@closeSyncedVideoFigure);
-            %To make the zoom toolbar not visible change 'Toolbar' to 'none'
-            
-            % Arrange the main interface windows
-            AVG.hVideoSyncFigure.hMainVBox = uix.VBox('Parent',AVG.hVideoSyncFigure.hFigure, 'Spacing',3, 'Padding',1);
-            AVG.hVideoSyncFigure.hButttonPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Controls');
-            AVG.hVideoSyncFigure.hVideoPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Video');
-            set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-1 -10]);
-            
-            AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel,'Position',[0.025 0.025 0.95 0.95]);
-            %AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
-            %hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
-
-            AVG.hVideoSyncFigure.hButttonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hButttonPanel, 'Spacing',4, 'Padding',2);
-            AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push', 'String','Load','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hLoadVideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox,'Style','edit', 'String','videoFileName','Callback',@CallbackLoadVideoEdit);
-            AVG.hVideoSyncFigure.hCheckSyncPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackCheckSyncPush, 'Style','push', 'String','Check sync.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hValidSyncTriggersEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackValidSyncTriggersEdit, 'Style','edit', 'String','0-for-uniform','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hFrameRateEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push', 'String','Run video','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push', 'String','Implay exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-            set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-3 -5 -3 -2 -1 -3 -3]);
-            %video synchronization was not yet verified
-            AVG.Params.videoSyncVerified=false;
+            createSyncVideoGUI;
         else
             figure(AVG.hVideoSyncFigure.hFigure)
         end
@@ -1135,9 +1113,9 @@ end
         
         % Arrange the main interface windows
         AVG.hMainFigure.hMainWindow = uix.HBox('Parent',AVG.hMainFigure.hFigure, 'Spacing',4);
-        AVG.hMainFigure.hLeftBox = uix.VBox('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
+        AVG.hMainFigure.hLeftBox = uix.VBoxFlex('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
         AVG.hMainFigure.hMidGrid = uix.Grid('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',7);
-        AVG.hMainFigure.hRightBox = uix.VBox('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
+        AVG.hMainFigure.hRightBox = uix.VBoxFlex('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
         set(AVG.hMainFigure.hMainWindow, 'Widths',[-2 -8 -2]);
         
         % Set left box
@@ -1331,7 +1309,129 @@ end
             set(AVG.hTrigger.MainGrid, 'Widths', -1*ones(1,min(3,ceil(AVG.Params.nTriggers/AVG.Params.maxNumberOfTriggerInColumn))), 'Heights', 20*ones(1,min(AVG.Params.maxNumberOfTriggerInColumn,AVG.Params.nTriggers)));
         end
     end
+%% %%%%%%%%%%%%%%%%%%%%%%%%%% Create Sync video GUI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    function createSyncVideoGUI()
+        AVG.hVideoSyncFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.4 AVG.hMainFigure.scrsz(4)*0.4 AVG.hMainFigure.scrsz(3)*0.58 AVG.hMainFigure.scrsz(4)*0.48], ...
+            'Name','Activity viewer - video sync', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','figure', 'HandleVisibility','off','CloseRequestFcn',@closeSyncedVideoFigure);
+        %To make the zoom toolbar not visible change 'Toolbar' to 'none'
+
+        % Arrange the main interface windows
+        AVG.hVideoSyncFigure.hMainVBox = uix.VBox('Parent',AVG.hVideoSyncFigure.hFigure, 'Spacing',3, 'Padding',1);
+        AVG.hVideoSyncFigure.hButttonPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Controls');
+        AVG.hVideoSyncFigure.hVideoPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Video');
+        set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-1 -10]);
+
+        AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel,'Position',[0.025 0.025 0.95 0.95]);
+        %AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
+        %hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
+
+        AVG.hVideoSyncFigure.hButttonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hButttonPanel, 'Spacing',4, 'Padding',2);
+        AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push',...
+            'Tooltip','Load video','String','Load','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        AVG.hVideoSyncFigure.hLoadVideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox,'Style','edit',...
+            'String','videoFileName','Callback',@CallbackLoadVideoEdit);
+        AVG.hVideoSyncFigure.hCheckSyncPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackCheckSyncPush, 'Style','push',...
+            'Tooltip','Check sync.','CData',AVG.Params.Icons.syncIcon,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        AVG.hVideoSyncFigure.hValidSyncTriggersEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackValidSyncTriggersEdit, ...
+            'Style','edit', 'String','0-for-uniform','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8],'Tooltip','If 0 is entered, I will assume that frames are lost at a uniform rate');
+        AVG.hVideoSyncFigure.hFrameRateEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, ...
+            'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push',...
+            'Tooltip','Run video','CData',AVG.Params.Icons.playForwardIcon,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push',...
+            'Tooltip','Export video to IMPlay','String','Exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-2 -10 -1 -3 -2 -1 -2]);
+        %video synchronization was not yet verified
+        AVG.Params.videoSyncVerified=false;
+    end
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%% Create Icons %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    function createIcons() %the function sets the first trigger to be default
+        
+        AVG.Params.Icons.playForwardIcon =...
+           [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,0  ,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,0  ,0  ,NaN,NaN,NaN,NaN,NaN;
+            NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN;
+            NaN,0  ,0  ,0  ,0  ,NaN,NaN,NaN;
+            NaN,0  ,0  ,0  ,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,0  ,0  ,0  ,0  ,NaN;
+            NaN,0  ,0  ,0  ,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,0  ,0  ,NaN,NaN,NaN;
+            NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN;
+            NaN,0  ,0  ,NaN,NaN,NaN,NaN,NaN;
+            NaN,0  ,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN];
+        AVG.Params.Icons.playForwardIcon = repmat(AVG.Params.Icons.playForwardIcon,[1 1 3]);
+
+        AVG.Params.Icons.playForwardFastIcon = repmat(AVG.Params.Icons.playForwardIcon,[1,2,1]);
+
+        AVG.Params.Icons.playBackwardIcon = flip(AVG.Params.Icons.playForwardIcon,2);
+
+        AVG.Params.Icons.playBackwardFastIcon = repmat(AVG.Params.Icons.playBackwardIcon,[1,2,1]);
+
+        AVG.Params.Icons.pauseIcon = ...
+            [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,0  ,0  ,NaN,0  ,0  ,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN];
+        AVG.Params.Icons.pauseIcon = repmat(AVG.Params.Icons.pauseIcon,[1 1 3]);
+
+
+        AVG.Params.Icons.stopIcon = ...
+            [NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN;
+            NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN;
+            NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN   0   0   0   0   0   0   0 NaN NaN;
+            NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN;
+            NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN;
+            NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN];
+        AVG.Params.Icons.stopIcon = repmat(AVG.Params.Icons.stopIcon,[1 1 3]);
+
+        AVG.Params.Icons.zoomIcon(:,:,1) = [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,255,255,255,254,252,252,254,255,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,255,229,167,145,129,128,150,213,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,217,151,143,153,152,137,113,112,180,249,255,255,255,255,255,255,255,255,255;255,255,255,255,225,141,176,240,250,253,236,179,116,91,198,255,255,255,255,255,255,255,255,255;255,255,255,240,152,162,253,255,249,232,220,221,182,98,111,219,255,255,255,255,255,255,255,255;255,255,255,231,127,197,255,247,231,217,206,193,172,125,87,175,255,255,255,255,255,255,255,255;255,255,255,225,109,215,254,228,216,206,194,181,172,133,87,162,255,255,255,255,255,255,255,255;255,255,255,223,99,203,242,217,207,195,189,202,206,132,87,159,255,255,255,255,255,255,255,255;255,255,255,225,104,159,212,205,190,187,213,249,204,113,87,168,255,255,255,255,255,255,255,255;253,239,239,227,129,107,177,203,160,187,224,203,136,81,108,207,255,254,255,255,255,255,255,255;255,243,239,242,208,101,103,136,136,156,160,115,72,71,85,169,252,255,255,255,255,255,255,255;255,248,239,239,250,180,107,87,83,81,88,89,79,73,83,96,184,255,255,255,255,255,255,255;255,252,239,239,248,254,193,121,94,91,106,129,147,100,87,87,96,183,255,255,255,255,255,255;255,255,242,239,244,255,255,236,231,237,245,244,207,135,89,87,87,93,189,240,239,242,249,255;255,255,246,239,240,255,252,235,227,233,237,233,223,208,139,99,87,78,86,182,242,242,250,255;255,255,250,239,239,252,248,239,239,252,252,250,235,237,225,153,98,71,71,80,197,255,254,255;255,255,254,239,239,248,244,239,246,255,255,255,239,239,247,229,147,88,71,71,88,244,254,255;255,255,255,244,239,246,242,239,249,255,255,255,239,239,248,255,231,155,88,76,108,231,245,255;255,255,255,248,239,242,239,239,254,255,255,255,239,239,248,255,255,221,156,144,188,225,236,255;255,255,255,253,239,239,239,244,255,255,255,255,239,239,248,255,252,230,195,190,216,228,244,255;255,255,255,255,243,239,239,249,255,255,255,255,239,239,248,255,254,246,242,239,243,248,254,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
+        AVG.Params.Icons.zoomIcon(:,:,2) = [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,253,251,253,255;255,255,255,255,255,255,255,255,254,252,252,254,255,255,255,255,255,255,255,255,248,247,254,255;255,249,248,252,248,247,226,165,138,122,125,150,213,255,251,249,247,248,250,248,247,247,247,252;255,247,247,247,249,210,143,136,147,144,131,113,112,173,242,249,249,247,250,249,247,248,250,254;254,247,247,254,223,134,169,239,249,245,229,179,111,84,193,255,250,247,251,251,247,251,255,255;252,247,250,240,148,154,247,255,246,225,214,219,175,90,110,219,248,247,253,250,247,252,255,255;251,247,251,231,122,190,251,247,227,210,201,191,165,118,87,173,247,247,255,248,247,253,255,255;249,247,253,225,104,208,252,228,211,198,192,180,164,126,81,155,247,247,255,247,247,248,253,255;249,247,255,223,93,194,240,217,202,187,188,202,202,126,81,157,248,248,255,252,248,248,255,255;255,255,255,225,104,160,211,205,190,187,213,249,204,113,87,168,255,255,255,255,255,255,255,255;254,249,249,233,129,107,176,202,167,196,231,203,139,86,109,207,255,254,255,255,255,255,255,255;255,250,249,250,208,101,103,137,145,165,165,115,81,81,90,169,252,255,255,255,255,255,255,255;255,252,249,249,252,180,107,90,92,90,90,89,86,82,85,96,184,255,255,255,255,255,255,255;255,254,249,249,252,254,193,125,103,99,107,129,146,99,87,87,96,183,255,255,255,255,255,255;255,255,250,249,251,255,255,245,240,242,245,244,216,142,93,87,87,93,194,249,249,250,253,255;255,255,251,249,249,255,254,245,238,236,235,232,232,217,143,99,87,83,95,191,249,250,253,255;255,255,253,249,249,254,252,249,248,252,251,250,244,246,229,154,98,81,81,85,197,255,255,255;255,255,255,249,249,252,251,249,251,255,255,255,249,249,251,230,146,93,81,81,97,248,255,255;255,255,255,251,249,251,250,249,253,255,255,255,249,249,252,255,230,154,92,84,118,241,251,255;255,255,255,252,249,250,249,249,255,255,255,255,249,249,252,255,255,222,156,144,193,234,248,255;255,255,255,254,249,249,249,251,255,255,255,255,249,249,252,255,252,239,204,197,226,237,250,255;255,255,255,255,250,249,249,253,255,255,255,255,249,249,252,255,255,251,250,249,250,252,255,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
+        AVG.Params.Icons.zoomIcon(:,:,3) = [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,251,244,251,255;255,255,255,255,255,255,255,255,254,252,252,254,255,255,255,255,255,255,255,255,237,234,252,255;255,238,237,246,237,235,219,160,128,109,121,150,213,254,245,238,234,237,242,237,234,234,234,247;255,234,234,235,238,196,130,125,136,130,120,113,111,162,229,238,238,234,241,238,234,237,241,252;252,234,235,252,220,121,155,237,247,231,218,179,103,71,185,255,242,234,245,245,234,244,255,255;248,234,241,240,143,141,237,255,242,211,204,219,161,77,109,219,237,234,250,241,234,248,255,255;244,234,245,231,114,177,245,247,220,196,194,189,151,105,87,170,234,234,254,237,234,251,255,255;239,234,250,225,94,194,247,228,201,185,187,179,151,113,71,142,234,235,255,235,234,237,251,255;238,234,254,223,81,180,238,217,191,174,186,202,198,114,70,154,237,237,255,246,237,237,254,255;255,255,255,225,104,160,211,205,190,187,213,249,204,113,87,168,255,255,255,255,255,255,255,255;254,248,248,232,129,107,176,202,166,195,230,203,138,85,109,207,255,254,255,255,255,255,255,255;255,249,248,249,208,101,103,137,144,164,164,115,81,80,89,169,252,255,255,255,255,255,255,255;255,252,248,248,252,180,107,90,91,89,90,89,85,81,85,96,184,255,255,255,255,255,255,255;255,254,248,248,252,254,193,125,102,98,107,129,146,99,87,87,96,183,255,255,255,255,255,255;255,255,249,248,250,255,255,244,239,241,245,244,215,141,93,87,87,93,193,249,248,249,252,255;255,255,251,248,249,255,254,244,237,235,235,232,231,216,142,99,87,83,94,191,249,249,253,255;255,255,253,248,248,254,252,248,247,252,251,250,243,245,229,154,98,80,80,85,197,255,255,255;255,255,255,248,248,252,250,248,251,255,255,255,248,248,250,230,146,92,80,80,96,248,255,255;255,255,255,250,248,251,249,248,252,255,255,255,248,248,252,255,230,154,92,83,117,240,250,255;255,255,255,252,248,249,248,248,255,255,255,255,248,248,252,255,255,222,156,144,192,233,246,255;255,255,255,254,248,248,248,250,255,255,255,255,248,248,252,255,252,238,203,196,225,236,250,255;255,255,255,255,249,248,248,252,255,255,255,255,248,248,252,255,255,251,249,248,249,252,255,255;255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
+
+        AVG.Params.Icons.syncIcon =...   
+           [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,0  ,0  ,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ;
+            NaN,NaN,0  ,0  ,0  ,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ;
+            NaN,NaN,0  ,0  ,NaN,NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ;
+            NaN,0  ,0  ,NaN,NaN,NaN,NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN,0  ,0  ,NaN;
+            NaN,0  ,NaN,NaN,NaN,NaN,NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN,0  ,0  ,NaN,NaN;
+            0  ,0  ,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ,0  ,NaN,NaN,0  ,0  ,0  ,NaN,NaN;
+            0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ,0  ,0  ,0  ,0  ,NaN,NaN,NaN;
+            0  ,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ,0  ,0  ,0  ,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,0  ,0  ,0  ,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN;
+            NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN];
+        AVG.Params.Icons.syncIcon = repmat(AVG.Params.Icons.syncIcon, [1 1 3]);
+
+    end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 end %EOF
 
 %% Remarks
