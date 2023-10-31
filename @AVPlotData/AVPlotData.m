@@ -32,12 +32,13 @@ classdef AVPlotData < handle
         M=[];                   %activity data [nChannels x nTrials x nSamples]
         channelNumbers=[];      %channel numbers
         A=[];                   %analog data [nChannels x nTrials x nSamples]
+        trigMarks = [];
     end
     methods
         %class constractor
         function obj=AVPlotData(startMethod)
             addlistener(obj,'M','PostSet',@obj.changedActivityData); %add a listener to M, after its changed its size is updated in the changedDataEvent method
-            addlistener(obj,'channelNumbers','PostSet',@obj.changedChannelNumber); %add a listener to M, after its changed its size is updated in the changedDataEvent method
+            addlistener(obj,'channelNumbers','PostSet',@obj.changedChannelNumber); %add a listener to channelNumbers, after its changed its size is updated in the changedDataEvent method
             %get the plot names
             allMethods=methods(class(obj));
             obj.plotMethods=allMethods(strncmp('plot',allMethods,4));
