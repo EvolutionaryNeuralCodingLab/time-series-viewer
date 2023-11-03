@@ -437,8 +437,8 @@ end
                 [~,maxDiff]=max(diff(pStartEnd));
                 pStartEnd=pStartEnd(maxDiff:maxDiff+1);
                 AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync((pStartEnd(1)+1):pStartEnd(2));
-            elseif nFrameGaps==1
-                fprintf('One >1 sec gap found in triggers... Using all triggers for analysis!\n');
+            elseif nFrameGaps<=1
+                fprintf('One or zero >1 sec gaps found in triggers... Using all triggers for analysis!\n');
             end
 
             AVG.Params.diffFrames=numel(AVG.Params.triggerFrameSync)-round(AVG.Params.nFramesVideo);
@@ -1368,12 +1368,12 @@ end
         AVG.hVideoSyncFigure.hFrameRateEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, ...
             'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hPlaySpeedupPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackPlaySpeedupPush, 'Style','push',...
-            'Stinger','X1','Tooltip','Play video faster (push to switch)','FontSize',10,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+            'String','X1','Tooltip','Play video faster (push to switch)','FontSize',10,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push',...
             'Tooltip','Run video','CData',AVG.Params.Icons.playForwardIcon,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hButttonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push',...
             'Tooltip','Export video to IMPlay','String','Exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-        set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-2 -6 -1 -2 -1 -1 -2]);
+        set(AVG.hVideoSyncFigure.hButttonHBox, 'Widths',[-2 -6 -1 -2 -1 -1 -1 -2]);
         %video synchronization was not yet verified
         AVG.Params.videoSyncVerified=false;
     end
