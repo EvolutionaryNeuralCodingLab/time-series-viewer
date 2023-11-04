@@ -547,8 +547,8 @@ end
                 imshow(frameVid,'Parent',AVG.hVideoSyncFigure.hVideoAxis);
                 tmpTime=AVG.Params.triggerFrameSync(AVG.Params.pSync(pFrames(frames)))-AVG.Params.startTime;
                 hTmp.XData=[tmpTime tmpTime];
-                drawnow nocallbacks;
-                for i=AVG.Params.currentSpeedup-1
+                drawnow nocallbacks;%nocallbacks;limitrate
+                for skipFrame=1:(AVG.Params.currentSpeedup-1)
                     AVG.Params.videoReader.readFrame;
                 end
             end
@@ -1377,16 +1377,19 @@ end
         AVG.hVideoSyncFigure.hMainVBox = uix.VBox('Parent',AVG.hVideoSyncFigure.hFigure, 'Spacing',3, 'Padding',1);
 
         AVG.hVideoSyncFigure.hButtonPanelTop = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Controls');
-        AVG.hVideoSyncFigure.hButtonPanelBottom = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Controls');
         AVG.hVideoSyncFigure.hVideoPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Video');
-        set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-1 -1 -10]);
+        set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-2 -10]);
 
         AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel,'Position',[0.025 0.025 0.95 0.95]);
         %AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
         %hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
 
         %High horizontalPanel
-        AVG.hVideoSyncFigure.hTopButtonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hButtonPanelTop, 'Spacing',4, 'Padding',2);
+        AVG.hVideoSyncFigure.hControlPanelVBox = uix.VBox('Parent',AVG.hVideoSyncFigure.hButtonPanelTop);
+        AVG.hVideoSyncFigure.hTopButtonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hControlPanelVBox, 'Spacing',4, 'Padding',2);
+        AVG.hVideoSyncFigure.hBottomButtonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hControlPanelVBox, 'Spacing',4, 'Padding',2);
+        set(AVG.hVideoSyncFigure.hControlPanelVBox, 'Heights',[-1 -1]);
+
         AVG.hVideoSyncFigure.hLoadVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox, 'Callback',@CallbackLoadVideoPush, 'Style','push',...
             'Tooltip','Load video','CData',AVG.Params.Icons.load,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hLoadVideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox,'Style','edit',...
@@ -1406,11 +1409,11 @@ end
         set(AVG.hVideoSyncFigure.hTopButtonHBox, 'Widths',[-1 -6 -1 -3 -1 -1 -1 -1]);
 
         %Low horizontalPanel
-        AVG.hVideoSyncFigure.hBottomButtonHBox = uix.HBox('Parent',AVG.hVideoSyncFigure.hButtonPanelBottom, 'Spacing',4, 'Padding',2);
         AVG.hVideoSyncFigure.hConvertVideo2EphysEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hBottomButtonHBox, 'Callback',@CallbackConvertVideo2EphysEdit, ...
             'Style','edit', 'String','hh:mm:ss','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8],'Tooltip','Write time in video (hh:mm:ss), press enter to get time in activity viewer (ms)');
         AVG.hVideoSyncFigure.hConvertEphys2VideoEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hBottomButtonHBox, 'Callback',@CallbackConvertEphys2VideoEdit, ...
-            'Style','edit', 'String','hh:mm:ss','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8],'Tooltip','Write time in ephys (ms), press enter to get time in video (hh:mm:ss)');
+            'Style','edit', 'String','time [ms]','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8],'Tooltip','Write time in ephys (ms), press enter to get time in video (hh:mm:ss)');
+        set(AVG.hVideoSyncFigure.hBottomButtonHBox, 'Widths',[100 100]);
     end
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%% Create Icons %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
