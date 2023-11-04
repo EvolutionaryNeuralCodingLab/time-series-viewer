@@ -1,6 +1,6 @@
 function [obj]=plotActivityTrace(obj)
 %selection of input data
-hText=[];
+hText=[];hTrigs=[];
 if obj.nCh==1 && obj.nTrials>1
     M=squeeze(obj.M);
     %this option fails only when the two dimensions of M are equal - check
@@ -9,7 +9,7 @@ elseif obj.nTrials==1 && obj.nCh>1
 elseif obj.nCh==1 && obj.nTrials==1
     M=squeeze(obj.M)';
 elseif obj.nCh>1 && obj.nTrials>1
-    obj.hPlot=[];hText=[];
+    obj.hPlot=[];
     msgbox('activity trace plot only support either multiple trials or channels (not both)','Attention','error','replace');
     return;
 end
@@ -54,8 +54,12 @@ else
     ylim(obj.hPlotAxis,obj.plotParams.yl);
 end
 
+if ~isempty(obj.trigMarks)
+    hTrigs=line(obj.hPlotAxis,[obj.trigMarks;obj.trigMarks]',obj.hPlotAxis.YLim','Color',[0.8 0.8 0.8]);
+end
+
 xlim(obj.hPlotAxis,[obj.T(1) obj.T(end)]);
 xlabel(obj.hPlotAxis,'Time [ms]','FontSize',14);
 ylabel(obj.hPlotAxis,'Voltage [\muV]','FontSize',14);
 [hScaleBar]=addScaleBar(obj.hPlotAxis);
-obj.hPlot=[obj.hPlot;hText;hScaleBar];
+obj.hPlot=[obj.hPlot;hText;hScaleBar;hTrigs];

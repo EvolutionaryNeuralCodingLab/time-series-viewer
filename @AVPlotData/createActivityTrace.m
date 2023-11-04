@@ -52,17 +52,27 @@ set(obj.hPlotControls.plotPropGrid, 'Widths',-2,'Heights', [30 30 30 30 30 30] )
     function CallbackVerticalShiftEdit(hObj,event)
         M=squeeze(obj.M);
         verticalShift=max(str2num(get(hObj,'string')),eps);
-        obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
-        obj.plotParams.yl=[obj.plotParams.shifts(end)-1*verticalShift obj.plotParams.shifts(1)+1*verticalShift];
-        ylim(obj.hPlotAxis,obj.plotParams.yl);
+        if size(M,2)>1
+            obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
+            obj.plotParams.yl=[obj.plotParams.shifts(end)-1*verticalShift obj.plotParams.shifts(1)+1*verticalShift];
+            ylim(obj.hPlotAxis,obj.plotParams.yl);
+        else
+            obj.plotParams.shifts=0;
+            obj.plotParams.yl=[-verticalShift verticalShift];
+        end
         obj.replot;
     end
     function CallbackAutoScaleStdYPush(hObj,event)
         M=squeeze(obj.M);
         verticalShift=nanstd(double(M(:)))*1;
-        obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
         set(obj.hPlotControls.verticalShiftEdit,'string',num2str(verticalShift));
-        obj.plotParams.yl=[obj.plotParams.shifts(end)-2*verticalShift obj.plotParams.shifts(1)+2*verticalShift];
+        if size(M,2)>1
+            obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
+            obj.plotParams.yl=[obj.plotParams.shifts(end)-2*verticalShift obj.plotParams.shifts(1)+2*verticalShift];
+        else
+            obj.plotParams.shifts=0;
+            obj.plotParams.yl=[obj.plotParams.shifts(end)-4*verticalShift obj.plotParams.shifts(1)+4*verticalShift];
+        end
         ylim(obj.hPlotAxis,obj.plotParams.yl);
         obj.replot;
     end
