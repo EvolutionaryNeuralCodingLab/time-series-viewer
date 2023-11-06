@@ -379,6 +379,8 @@ end
         %set default params
         AVG.Params.videoSyncVerified=false;
         AVG.Params.currentSpeedup=1;
+        AVG.Params.singleFrameMode=false;
+        AVG.Params.runActive=false;
 
         if isempty(AVG.hVideoSyncFigure.hFigure) || ~isvalid(AVG.hVideoSyncFigure.hFigure)
             createSyncVideoGUI;
@@ -525,8 +527,23 @@ end
         hObj.String=['X' num2str(AVG.Params.currentSpeedup)];
     end
 
+    function CallbackRunSingleFramePush(hObj,event)
+        if AVG.Params.runActive==true
+            uiresume(AVG.hVideoSyncFigure.hFigure);
+        else
+            if all(hObj.BackgroundColor==[0.2 0.9 0.2])
+                hObj.BackgroundColor=[0.8 0.8 0.8];
+                AVG.Params.singleFrameMode=false;
+            else
+                hObj.BackgroundColor=[0.2 0.9 0.2];
+                AVG.Params.singleFrameMode=true;
+            end
+        end
+    end
+
     function CallbackRunVideoPush(hObj,event)
         hObj.BackgroundColor=[0 1 0];
+        AVG.Params.runActive=true;
         if AVG.Params.videoSyncVerified
             pFrames=find(AVG.Params.triggerFrameSync(AVG.Params.pSync)>AVG.Params.startTime & AVG.Params.triggerFrameSync(AVG.Params.pSync)<(AVG.Params.startTime+AVG.Params.window));
             %startFrame=find(AVG.Params.triggerFrameSync(AVG.Params.pSync)>AVG.Params.startTime,1,'first');
@@ -551,6 +568,9 @@ end
                 for skipFrame=1:(AVG.Params.currentSpeedup-1)
                     AVG.Params.videoReader.readFrame;
                 end
+                if AVG.Params.singleFrameMode
+                    uiwait(AVG.hVideoSyncFigure.hFigure);
+                end
             end
             delete(hTmp);
             hold(AVG.hVideoSyncFigure.hVideoAxis,'off');
@@ -558,6 +578,7 @@ end
             msgbox('Triggers not synced to video, run sync first','Attention','error','replace');
         end
         hObj.BackgroundColor=[0.8 0.8 0.8];
+        AVG.Params.runActive=false;
     end
 
     function CallbackValidSyncTriggersEdit(hObj,event)
@@ -1368,8 +1389,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Create Sync video GUI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function createSyncVideoGUI()
-        createIcons;
-        AVG.hVideoSyncFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.5 AVG.hMainFigure.scrsz(4)*0.4 AVG.hMainFigure.scrsz(3)*0.48 AVG.hMainFigure.scrsz(4)*0.45], ...
+        AVG.hVideoSyncFigure.hFigure = figure('Position',[AVG.hMainFigure.scrsz(3)*0.5 AVG.hMainFigure.scrsz(4)*0.2 AVG.hMainFigure.scrsz(3)*0.35 AVG.hMainFigure.scrsz(4)*0.6], ...
             'Name','Activity viewer - video sync', 'NumberTitle','off', 'MenuBar','none', 'Toolbar','figure', 'HandleVisibility','off','CloseRequestFcn',@closeSyncedVideoFigure);
         %To make the zoom toolbar not visible change 'Toolbar' to 'none'
 
@@ -1378,7 +1398,7 @@ end
 
         AVG.hVideoSyncFigure.hButtonPanelTop = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Controls');
         AVG.hVideoSyncFigure.hVideoPanel = uix.Panel('Parent',AVG.hVideoSyncFigure.hMainVBox, 'Title','Video');
-        set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-2 -10]);
+        set(AVG.hVideoSyncFigure.hMainVBox, 'Heights',[-1 -7]);
 
         AVG.hVideoSyncFigure.hVideoAxis=axes('Parent', AVG.hVideoSyncFigure.hVideoPanel,'Position',[0.025 0.025 0.95 0.95]);
         %AVG.hVideoSyncFigure.hVideoAxis.Toolbar.Visible = 'on';
@@ -1402,11 +1422,13 @@ end
             'Callback',@CallbackFrameRateEdit, 'Style','edit', 'String','Frame rate','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hPlaySpeedupPush=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox, 'Callback',@CallbackPlaySpeedupPush, 'Style','push',...
             'String','X1','Tooltip','Play video faster (push to switch)','FontSize',10,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+        AVG.hVideoSyncFigure.hRunSingleFramePush=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox, 'Callback',@CallbackRunSingleFramePush, 'Style','push',...
+            'Tooltip','Press to run video frame by frame (each press advances one frame','CData',AVG.Params.Icons.step,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hPlayVideoPush=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox, 'Callback',@CallbackRunVideoPush, 'Style','push',...
-            'Tooltip','Run video','CData',AVG.Params.Icons.playForwardIcon,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
+            'Value',1,'Tooltip','Run video','CData',AVG.Params.Icons.playForwardIcon,'FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
         AVG.hVideoSyncFigure.hExportIMPlayPush=uicontrol('Parent', AVG.hVideoSyncFigure.hTopButtonHBox, 'Callback',@CallbackExportIMPlayPush, 'Style','push',...
             'Tooltip','Export video to IMPlay','String','Exp.','FontSize',12,'FontWeight','Bold','BackgroundColor',[0.8 0.8 0.8]);
-        set(AVG.hVideoSyncFigure.hTopButtonHBox, 'Widths',[-1 -6 -1 -3 -1 -1 -1 -1]);
+        set(AVG.hVideoSyncFigure.hTopButtonHBox, 'Widths',[-1 -6 -1 -3 -1 -1 -1 -1 -1]);
 
         %Low horizontalPanel
         AVG.hVideoSyncFigure.hConvertVideo2EphysEdit=uicontrol('Parent', AVG.hVideoSyncFigure.hBottomButtonHBox, 'Callback',@CallbackConvertVideo2EphysEdit, ...
@@ -1502,6 +1524,12 @@ end
         g(g>128)=NaN;
         g(g<=128)=0;
         AVG.Params.Icons.load=g;
+
+        [a,map]=imread('step2.png');
+        a=double(a);
+        a(a<=128)=0;
+        a(a>128)=NaN;
+        AVG.Params.Icons.step=a;
     end
 
 
