@@ -451,6 +451,8 @@ end
             AVG.Params.pSync=[];% the relevant places in AVG.Params.triggerFrameSync
             if AVG.Params.diffFrames==0
                 AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0 1 0];
+                AVG.Params.pSync=1:numel(AVG.Params.triggerFrameSync);
+                AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String=['1:' num2str(numel(AVG.Params.triggerFrameSync))];
             elseif AVG.Params.diffFrames>0
                 if all(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String)=='0'
                     msgbox({['Found ' num2str(AVG.Params.diffFrames) ' more frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...

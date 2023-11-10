@@ -354,11 +354,9 @@ classdef OERecording < dataRecording
                     if numel(chTypeNameSettings)~=numel(dataFileStrings)
                         fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
                     end
-                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
-                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeNameSettings(channelNumbersAll),'UniformOutput',0));
+                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
                 end
-
-
             else %for old recordings or recordigns with no settings files
                 obj.eventFileName='all_channels.events';
                 channelFiles=dir([obj.recordingDir filesep '*.' obj.fileExtension]);
