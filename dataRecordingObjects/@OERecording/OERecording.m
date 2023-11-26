@@ -532,13 +532,20 @@ classdef OERecording < dataRecording
             for i=1:numel(obj.channelFiles)
                 obj.fid(i)=fopen([obj.recordingDir filesep obj.channelFiles{i}],'r');
             end
-            
+            if any(obj.fid==-1)
+                error('The channel file identifier could not be created. Check that the channel file names are correct and available for reading');
+            end
             for i=1:numel(obj.channelFilesAnalog)
                 obj.fidA(i)=fopen([obj.recordingDir filesep obj.channelFilesAnalog{i}],'r');
             end
-            
+            if any(obj.fidA==-1)
+                error('The analog file identifier could not be created. Check that the analog file names are correct and available for reading');
+            end
             if ~isempty(obj.eventFileName)
                 obj.fidEvnt=fopen([obj.recordingDir filesep obj.eventFileName],'r');
+            end
+            if any(obj.fidEvnt==-1)
+                error('The event file identifier could not be created. Check that the event file names are correct and available for reading');
             end
         end
         
@@ -584,8 +591,12 @@ classdef OERecording < dataRecording
             obj.recordingName = name;
             obj.metaDataFile=[obj.recordingDir filesep obj.recordingName 'OE_metaData.mat'];
             %obj.dataFileNames=dir([pathstr filesep name filesep '*.' obj.fileExtension]);
+            
+            if obj.recordingDir(end)=='/'
+                obj.recordingDir=obj.recordingDir(1:end-1);
+            end
         end
-        
+
     end
     
     methods (Hidden)

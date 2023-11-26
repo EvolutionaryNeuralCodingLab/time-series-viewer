@@ -1286,6 +1286,9 @@ classdef (Abstract) dataRecording < handle
                     obj.metaDataFile=[obj.recordingDir{1} filesep obj.recordingName '_metaData.mat'];
                 end
             end
+            if obj.recordingDir(end)=='/'
+                obj.recordingDir=obj.recordingDir(1:end-1);
+            end
         end
 
     end
