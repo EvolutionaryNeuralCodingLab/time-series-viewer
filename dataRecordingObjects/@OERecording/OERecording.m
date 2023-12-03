@@ -347,15 +347,21 @@ classdef OERecording < dataRecording
                     end
                     channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
                     chTypeName=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
-                    
+
                     %get channel information from settings files
                     pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
                     chTypeNameSettings={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
                     if numel(chTypeNameSettings)~=numel(dataFileStrings)
                         fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!');
                     end
-                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
-                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    if numel(chTypeName{1})==0
+                        pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeNameSettings,'UniformOutput',0));
+                        pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeNameSettings,'UniformOutput',0));
+                    else
+                        pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                        pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    end
+                    
                 end
             else %for old recordings or recordigns with no settings files
                 obj.eventFileName='all_channels.events';
