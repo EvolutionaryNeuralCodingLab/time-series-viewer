@@ -648,8 +648,8 @@ classdef (Abstract) dataRecording < handle
                 return;
             end
             
-            saveFileAll=[pathToPhyResults filesep 'sorting_tIc_All.mat'];
-            saveFileValid=[pathToPhyResults filesep 'sorting_tIc.mat'];
+            saveFileAll=[pathToPhyResults filesep 'Tsorting_tIc_All.mat']; %%%CHANGE BACK
+            saveFileValid=[pathToPhyResults filesep 'Tsorting_tIc.mat'];%%%CHANGE BACK
             
             if nargout==1
                 if isfile(saveFileValid)
@@ -724,6 +724,110 @@ classdef (Abstract) dataRecording < handle
             nSpks=nSpks(pValid);
             [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
             save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
+            
+            if nargout==1 %if output is needed and calculation was needed (no saved file existing).
+                spkData=load(saveFileValid);
+            end
+        end
+
+        function [spkData]=convertBCSorting2tIc(obj,pathToBCResults,tStart)
+            spkData=[];
+            if nargin==1
+                pathToBCResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
+                fprintf('Sorting results path not provided, using this path:\n%s\n',pathToBCResults);
+            else
+                if isempty(pathToBCResults)
+                    pathToBCResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
+                    fprintf('Sorting results path not provided, using this path:\n%s\n',pathToBCResults);
+                end
+            end
+            
+            saveFileAll=[pathToBCResults filesep 'BCsorting_tIc_All.mat'];
+            saveFileValid=[pathToBCResults filesep 'BCsorting_tIc.mat'];
+            
+            if nargout==1
+                if isfile(saveFileValid)
+                    spkData=load(saveFileValid);
+                    return;
+                end
+            end
+            
+            readNPYPath=which('readNPY.m');
+            if isempty(readNPYPath)
+                fprintf('readNPY was not found, trying to add to path please add it to the matlab path and run again\n');
+                return;
+            end
+            %{
+            general info:
+            template_id - ranges from 0 n_templates-1
+            each template is the spike signature on relevant electrodes - spike template multiplied by amplitude for every spike should give ~spike shape
+            cluster - a set of spike supposedly fired by the same neuron
+            cluster have a cluster_id - 0 - n_clusters-1
+            when spikes are removed or added to a cluster the cluster id changes
+            This means that we can not use clusters to extract spike templates. We need to regenerate them
+            %}
+            
+            [spike_times, spike_clusters, templateWaveforms, templateAmplitudes, pcFeatures, ...
+                pcFeatureIdx, channelPositions] = bc_loadEphysData(pathToBCResults);
+
+
+            savePath = pathToBCResults(1:strfind(pathToBCResults,'catgt')-2);
+            savePath = fullfile(savePath, 'qMetrics');
+
+            [param, qMetric] = bc_loadSavedMetrics(savePath);
+            label = bc_getQualityUnitType(param, qMetric, savePath);
+            dspikes = readNPY('spikes._bc_duplicateSpikes.npy'); %Spike is duplicate?
+
+            clusterTable=readtable([pathToBCResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
+            clusterTable=sortrows(clusterTable,'ch');
+            %spike_templates = readNPY([pathToPhyResults filesep 'spike_templates.npy']);
+            spike_times = spike_times(~dspikes); %exclude duplicate spikes
+            spike_clusters = spike_clusters(~dspikes);%exclude duplicate spikes
+            labelVec = {'noise','good','mua','non-somatic'};
+            label = arrayfun(@(x) labelVec{x}, label+1, 'UniformOutput', false); %Replace values of label by their meaning
+            neuronAmp=clusterTable.amp;
+            %spikeShapes=readNPY([pathToPhyResults filesep 'templates.npy']); %check if this needs to be sorted
+            %check for clusters on the same electrode
+            [uab,a,b]=unique(clusterTable.ch);
+            ic=zeros(4,numel(uab));
+            t=cell(1,numel(uab));
+            currentIdx=0;prevCh=-1;
+            nClusters=numel(clusterTable.ch);
+            
+            for i=1:nClusters
+                if any("id" == string(clusterTable.Properties.VariableNames))
+                    t{i}=spike_times(spike_clusters==clusterTable.id(i))'; %changed from id to cluster_id
+                else
+                    t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))'; %changed from id to cluster_id
+                end
+                ic(1,i)=clusterTable.ch(i);
+                ic(3,i)=currentIdx+1;
+                ic(4,i)=currentIdx+numel(t{i});
+                if prevCh==ic(1,i)
+                    ic(2,i)=ic(2,i-1)+1;
+                else
+                    ic(2,i)=1;
+                end
+                prevCh=ic(1,i);
+                currentIdx=ic(4,i);
+            end
+            t=double(cell2mat(t))/(obj.samplingFrequency(1)/1000);
+
+            if nargin==3
+                t=t+tStart;
+            end
+            if min(ic(1,:))==0
+                ic(1,:)=ic(1,:)+1;
+            end
+            fprintf('Saving results to %s\n',saveFileValid);
+            save(saveFileAll,'t','ic','label','neuronAmp')%,'nSpks'); %save full spikes including noise
+
+            pValid=strcmp(label,'good')|strcmp(label,'mua');
+            label=label(pValid);
+            neuronAmp=neuronAmp(pValid);
+            %nSpks=nSpks(pValid);
+            [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
+            save(saveFileValid,'t','ic','label','neuronAmp');%,'nSpks');
             
             if nargout==1 %if output is needed and calculation was needed (no saved file existing).
                 spkData=load(saveFileValid);

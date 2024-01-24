@@ -215,5 +215,4 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
     end
 
 
-
 end
