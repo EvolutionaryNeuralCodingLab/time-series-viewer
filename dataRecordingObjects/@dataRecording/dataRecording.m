@@ -648,8 +648,8 @@ classdef (Abstract) dataRecording < handle
                 return;
             end
             
-            saveFileAll=[pathToPhyResults filesep 'Tsorting_tIc_All.mat']; %%%CHANGE BACK
-            saveFileValid=[pathToPhyResults filesep 'Tsorting_tIc.mat'];%%%CHANGE BACK
+            saveFileAll=[pathToPhyResults filesep 'sorting_tIc_All.mat'];
+            saveFileValid=[pathToPhyResults filesep 'sorting_tIc.mat'];
             
             if nargout==1
                 if isfile(saveFileValid)
@@ -773,61 +773,66 @@ classdef (Abstract) dataRecording < handle
 
             savePath = pathToBCResults(1:strfind(pathToBCResults,'catgt')-2);
             savePath = fullfile(savePath, 'qMetrics');
+            cd(savePath);
 
             [param, qMetric] = bc_loadSavedMetrics(savePath);
-            label = bc_getQualityUnitType(param, qMetric, savePath);
+            unitType = bc_getQualityUnitType(param, sortrows(qMetric,'maxChannels'), savePath);
             dspikes = readNPY('spikes._bc_duplicateSpikes.npy'); %Spike is duplicate?
+
+            cd(pathToBCResults);
 
             clusterTable=readtable([pathToBCResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
             clusterTable=sortrows(clusterTable,'ch');
+            qMetric=sortrows(qMetric,'maxChannels');
             %spike_templates = readNPY([pathToPhyResults filesep 'spike_templates.npy']);
-            spike_times = spike_times(~dspikes); %exclude duplicate spikes
-            spike_clusters = spike_clusters(~dspikes);%exclude duplicate spikes
+            spikeTimes_samplesND = spike_times(~dspikes); %exclude duplicate spikes
+            spikeTemplatesND = spike_clusters(~dspikes);%exclude duplicate spikes
             labelVec = {'noise','good','mua','non-somatic'};
-            label = arrayfun(@(x) labelVec{x}, label+1, 'UniformOutput', false); %Replace values of label by their meaning
+            label = arrayfun(@(x) labelVec{x}, unitType+1, 'UniformOutput', false); %Replace values of label by their meaning
             neuronAmp=clusterTable.amp;
-            %spikeShapes=readNPY([pathToPhyResults filesep 'templates.npy']); %check if this needs to be sorted
-            %check for clusters on the same electrode
-            [uab,a,b]=unique(clusterTable.ch);
-            ic=zeros(4,numel(uab));
-            t=cell(1,numel(uab));
+               
+            GoodUtemplate = find(unitType ~= 0); %Selects everything except noise units
+
+            ic = zeros(5,numel(GoodUtemplate)); 
+
+            t = cell(1,numel(GoodUtemplate));
             currentIdx=0;prevCh=-1;
-            nClusters=numel(clusterTable.ch);
-            
-            for i=1:nClusters
-                if any("id" == string(clusterTable.Properties.VariableNames))
-                    t{i}=spike_times(spike_clusters==clusterTable.id(i))'; %changed from id to cluster_id
-                else
-                    t{i}=spike_times(spike_clusters==clusterTable.cluster_id(i))'; %changed from id to cluster_id
-                end
-                ic(1,i)=clusterTable.ch(i);
-                ic(3,i)=currentIdx+1;
-                ic(4,i)=currentIdx+numel(t{i});
-                if prevCh==ic(1,i)
-                    ic(2,i)=ic(2,i-1)+1;
-                else
-                    ic(2,i)=1;
-                end
-                prevCh=ic(1,i);
-                currentIdx=ic(4,i);
-            end
-            t=double(cell2mat(t))/(obj.samplingFrequency(1)/1000);
 
-            if nargin==3
-                t=t+tStart;
+            for i = 1:numel(GoodUtemplate)
+
+                if ~isempty(spikeTimes_samplesND(spikeTemplatesND == GoodUtemplate(i)))
+
+                    tm = spikeTimes_samplesND(spikeTemplatesND == GoodUtemplate(i));
+
+                    t{i} = uint64(tm');
+
+                    ic(1,i) = qMetric.maxChannels(GoodUtemplate(i),:);
+                    ic(3,i)=currentIdx+1;
+                    ic(4,i)=currentIdx+numel(t{i});
+                    ic(5,i)=qMetric.phy_clusterID(GoodUtemplate(i),:);
+
+                    if prevCh==ic(1,i)
+                        ic(2,i)=ic(2,i-1)+1;
+                    else
+                        ic(2,i)=1;
+                    end
+                    prevCh=ic(1,i);
+                    currentIdx=ic(4,i);
+
+                end
             end
-            if min(ic(1,:))==0
-                ic(1,:)=ic(1,:)+1;
-            end
+
+            nSpks=cellfun(@length,t(find(~cellfun(@isempty,t))));
+
+            t=double(cell2mat(t(find(~cellfun(@isempty,t)))))/(obj.samplingFrequency(1)/1000);
+            ic = ic(:,ic(1,:)~=0);
+
             fprintf('Saving results to %s\n',saveFileValid);
-            save(saveFileAll,'t','ic','label','neuronAmp')%,'nSpks'); %save full spikes including noise
+            save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
 
-            pValid=strcmp(label,'good')|strcmp(label,'mua');
-            label=label(pValid);
-            neuronAmp=neuronAmp(pValid);
-            %nSpks=nSpks(pValid);
-            [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
-            save(saveFileValid,'t','ic','label','neuronAmp');%,'nSpks');
+            neuronAmp=neuronAmp(GoodUtemplate);
+            
+            save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
             
             if nargout==1 %if output is needed and calculation was needed (no saved file existing).
                 spkData=load(saveFileValid);
