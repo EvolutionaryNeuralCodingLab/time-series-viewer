@@ -629,7 +629,7 @@ classdef (Abstract) dataRecording < handle
             end
         end
 
-        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,varargin)%GUIbc,rerun)
+        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,GUIbc,rerun)%GUIbc,rerun)
 
             if nargin <3 
                 GUIbc = 0;
