@@ -629,6 +629,84 @@ classdef (Abstract) dataRecording < handle
             end
         end
 
+        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,varargin)%GUIbc,rerun)
+
+            if nargin <3 
+                GUIbc = 0;
+            end
+
+            if nargin <4 
+                rerun = 0;
+            end
+
+            files = dir(pathToKSresults);
+
+            fileNames = {files.name};
+
+            APbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.bin')));
+            METAbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.meta')));
+            
+            ephysRawDir = dir(fullfile(pathToKSresults,APbin)); % path to yourraw .bin or .dat data
+            ephysMetaDir = dir(fullfile(pathToKSresults,METAbin)); % path to your .meta or .oebin meta file
+            saveLocation = pathToKSresults(1:strfind(pathToKSresults,'catgt')-2);
+            savePath = fullfile(saveLocation, 'qMetrics');
+            decompressDataLocal = saveLocation; % where to save raw decompressed ephys data
+
+
+            %%% load data
+            [spikeTimes_samples, spikeTemplates, templateWaveforms, templateAmplitudes, pcFeatures, ...
+                pcFeatureIdx, channelPositions] = bc_loadEphysData(pathToKSresults);
+
+            %%% detect whether data is compressed, decompress locally if necessary
+            rawFile = bc_manageDataCompression(ephysRawDir, decompressDataLocal);
+
+            %%% which quality metric parameters to extract and thresholds
+            param = bc_qualityParamValues(ephysMetaDir, rawFile, pathToKSresults); %for unitmatch, run this:
+            % param = bc_qualityParamValuesForUnitMatch(ephysMetaDir, rawFile, ephysKilosortPath, gain_to_uV)
+
+            param.firstPeakRatio = 1.3;
+
+            %%% compute quality metrics
+          
+            qMetricsExist = ~isempty(dir(fullfile(savePath, 'qMetric*.mat'))) || ~isempty(dir(fullfile(savePath, 'templates._bc_qMetrics.parquet')));
+
+            if qMetricsExist == 0 || rerun
+                [qMetric, unitType] = bc_runAllQualityMetrics(param, spikeTimes_samples, spikeTemplates, ...
+                    templateWaveforms, templateAmplitudes, pcFeatures, pcFeatureIdx, channelPositions, savePath);
+            else
+                [param, qMetric] = bc_loadSavedMetrics(savePath);
+                unitType = bc_getQualityUnitType(param, sortrows(qMetric,'maxChannels'), savePath);
+            end
+
+
+            %%% view units + quality metrics in GUI
+            % load data for GUI
+
+            if GUIbc == 1
+                loadRawTraces = 1; % default: don't load in raw data (this makes the GUI significantly faster)
+                bc_loadMetricsForGUI;
+
+                % GUI guide:
+                % left/right arrow: toggle between units
+                % g : go to next good unit
+                % m : go to next multi-unit
+                % n : go to next noise unit
+                % up/down arrow: toggle between time chunks in the raw data
+                % u: brings up a input dialog to enter the unit you want to go to
+                unitQualityGuiHandle = bc_unitQualityGUI(memMapData, ephysData, qMetric, forGUI, rawWaveforms, ...
+                    param, probeLocation, unitType, loadRawTraces);
+            end
+
+            %%% Save figures
+
+            if qMetricsExist == 0 || rerun
+                cd(savePath)
+                savefig(figure(1), 'templateWaveform.fig')
+                savefig(figure(2), 'qualityMetrics.fig')
+            end
+
+        end
+
         function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart)
             spkData=[];
             if nargin==1
