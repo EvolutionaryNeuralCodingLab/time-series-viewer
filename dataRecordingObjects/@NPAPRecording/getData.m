@@ -32,7 +32,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         t0= startTime_ms(trials)/1000;
         samp0 = round(t0*str2double(meta.imSampRate));
     
-        dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path);
+        [dataArray, channels] = ReadBin(samp0, nSamp, meta, binName,channels, path);
         
         dataArray = dataArray(channels,:);
 
@@ -121,7 +121,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
 %
 % IMPORTANT: samp0 and nSamp must be integers.
 %
-    function dataArray = ReadBin(samp0, nSamp, meta, binName,channels, path)
+    function [dataArray, channels] = ReadBin(samp0, nSamp, meta, binName,channels, path)
 
         nChan = str2double(meta.nSavedChans);
 
@@ -161,6 +161,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
                 dataArray  = fread(fid,[1, nSamp],'int16');
             end
         
+            channels = 1;
         end
             
         fclose(fid);
