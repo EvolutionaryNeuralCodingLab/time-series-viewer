@@ -629,6 +629,84 @@ classdef (Abstract) dataRecording < handle
             end
         end
 
+        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,varargin)%GUIbc,rerun)
+
+            if nargin <3 
+                GUIbc = 0;
+            end
+
+            if nargin <4 
+                rerun = 0;
+            end
+
+            files = dir(pathToKSresults);
+
+            fileNames = {files.name};
+
+            APbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.bin')));
+            METAbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.meta')));
+            
+            ephysRawDir = dir(fullfile(pathToKSresults,APbin)); % path to yourraw .bin or .dat data
+            ephysMetaDir = dir(fullfile(pathToKSresults,METAbin)); % path to your .meta or .oebin meta file
+            saveLocation = pathToKSresults(1:strfind(pathToKSresults,'catgt')-2);
+            savePath = fullfile(saveLocation, 'qMetrics');
+            decompressDataLocal = saveLocation; % where to save raw decompressed ephys data
+
+
+            %%% load data
+            [spikeTimes_samples, spikeTemplates, templateWaveforms, templateAmplitudes, pcFeatures, ...
+                pcFeatureIdx, channelPositions] = bc_loadEphysData(pathToKSresults);
+
+            %%% detect whether data is compressed, decompress locally if necessary
+            rawFile = bc_manageDataCompression(ephysRawDir, decompressDataLocal);
+
+            %%% which quality metric parameters to extract and thresholds
+            param = bc_qualityParamValues(ephysMetaDir, rawFile, pathToKSresults); %for unitmatch, run this:
+            % param = bc_qualityParamValuesForUnitMatch(ephysMetaDir, rawFile, ephysKilosortPath, gain_to_uV)
+
+            param.firstPeakRatio = 1.3;
+
+            %%% compute quality metrics
+          
+            qMetricsExist = ~isempty(dir(fullfile(savePath, 'qMetric*.mat'))) || ~isempty(dir(fullfile(savePath, 'templates._bc_qMetrics.parquet')));
+
+            if qMetricsExist == 0 || rerun
+                [qMetric, unitType] = bc_runAllQualityMetrics(param, spikeTimes_samples, spikeTemplates, ...
+                    templateWaveforms, templateAmplitudes, pcFeatures, pcFeatureIdx, channelPositions, savePath);
+            else
+                [param, qMetric] = bc_loadSavedMetrics(savePath);
+                unitType = bc_getQualityUnitType(param, sortrows(qMetric,'maxChannels'), savePath);
+            end
+
+
+            %%% view units + quality metrics in GUI
+            % load data for GUI
+
+            if GUIbc == 1
+                loadRawTraces = 1; % default: don't load in raw data (this makes the GUI significantly faster)
+                bc_loadMetricsForGUI;
+
+                % GUI guide:
+                % left/right arrow: toggle between units
+                % g : go to next good unit
+                % m : go to next multi-unit
+                % n : go to next noise unit
+                % up/down arrow: toggle between time chunks in the raw data
+                % u: brings up a input dialog to enter the unit you want to go to
+                unitQualityGuiHandle = bc_unitQualityGUI(memMapData, ephysData, qMetric, forGUI, rawWaveforms, ...
+                    param, probeLocation, unitType, loadRawTraces);
+            end
+
+            %%% Save figures
+
+            if qMetricsExist == 0 || rerun
+                cd(savePath)
+                savefig(figure(1), 'templateWaveform.fig')
+                savefig(figure(2), 'qualityMetrics.fig')
+            end
+
+        end
+
         function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart)
             spkData=[];
             if nargin==1
@@ -723,6 +801,115 @@ classdef (Abstract) dataRecording < handle
             neuronAmp=neuronAmp(pValid);
             nSpks=nSpks(pValid);
             [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
+            save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
+            
+            if nargout==1 %if output is needed and calculation was needed (no saved file existing).
+                spkData=load(saveFileValid);
+            end
+        end
+
+        function [spkData]=convertBCSorting2tIc(obj,pathToBCResults,tStart)
+            spkData=[];
+            if nargin==1
+                pathToBCResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
+                fprintf('Sorting results path not provided, using this path:\n%s\n',pathToBCResults);
+            else
+                if isempty(pathToBCResults)
+                    pathToBCResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
+                    fprintf('Sorting results path not provided, using this path:\n%s\n',pathToBCResults);
+                end
+            end
+            
+            saveFileAll=[pathToBCResults filesep 'BCsorting_tIc_All.mat'];
+            saveFileValid=[pathToBCResults filesep 'BCsorting_tIc.mat'];
+            
+            if nargout==1
+                if isfile(saveFileValid)
+                    spkData=load(saveFileValid);
+                    return;
+                end
+            end
+            
+            readNPYPath=which('readNPY.m');
+            if isempty(readNPYPath)
+                fprintf('readNPY was not found, trying to add to path please add it to the matlab path and run again\n');
+                return;
+            end
+            %{
+            general info:
+            template_id - ranges from 0 n_templates-1
+            each template is the spike signature on relevant electrodes - spike template multiplied by amplitude for every spike should give ~spike shape
+            cluster - a set of spike supposedly fired by the same neuron
+            cluster have a cluster_id - 0 - n_clusters-1
+            when spikes are removed or added to a cluster the cluster id changes
+            This means that we can not use clusters to extract spike templates. We need to regenerate them
+            %}
+            
+            [spike_times, spike_clusters, templateWaveforms, templateAmplitudes, pcFeatures, ...
+                pcFeatureIdx, channelPositions] = bc_loadEphysData(pathToBCResults);
+
+
+            savePath = pathToBCResults(1:strfind(pathToBCResults,'catgt')-2);
+            savePath = fullfile(savePath, 'qMetrics');
+            cd(savePath);
+
+            [param, qMetric] = bc_loadSavedMetrics(savePath);
+            unitType = bc_getQualityUnitType(param, sortrows(qMetric,'maxChannels'), savePath);
+            dspikes = readNPY('spikes._bc_duplicateSpikes.npy'); %Spike is duplicate?
+
+            cd(pathToBCResults);
+
+            clusterTable=readtable([pathToBCResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
+            clusterTable=sortrows(clusterTable,'ch');
+            qMetric=sortrows(qMetric,'maxChannels');
+            %spike_templates = readNPY([pathToPhyResults filesep 'spike_templates.npy']);
+            spikeTimes_samplesND = spike_times(~dspikes); %exclude duplicate spikes
+            spikeTemplatesND = spike_clusters(~dspikes);%exclude duplicate spikes
+            labelVec = {'noise','good','mua','non-somatic'};
+            label = arrayfun(@(x) labelVec{x}, unitType+1, 'UniformOutput', false); %Replace values of label by their meaning
+            neuronAmp=clusterTable.amp;
+               
+            GoodUtemplate = find(unitType ~= 0); %Selects everything except noise units
+
+            ic = zeros(5,numel(GoodUtemplate)); 
+
+            t = cell(1,numel(GoodUtemplate));
+            currentIdx=0;prevCh=-1;
+
+            for i = 1:numel(GoodUtemplate)
+
+                if ~isempty(spikeTimes_samplesND(spikeTemplatesND == GoodUtemplate(i)))
+
+                    tm = spikeTimes_samplesND(spikeTemplatesND == GoodUtemplate(i));
+
+                    t{i} = uint64(tm');
+
+                    ic(1,i) = qMetric.maxChannels(GoodUtemplate(i),:);
+                    ic(3,i)=currentIdx+1;
+                    ic(4,i)=currentIdx+numel(t{i});
+                    ic(5,i)=qMetric.phy_clusterID(GoodUtemplate(i),:);
+
+                    if prevCh==ic(1,i)
+                        ic(2,i)=ic(2,i-1)+1;
+                    else
+                        ic(2,i)=1;
+                    end
+                    prevCh=ic(1,i);
+                    currentIdx=ic(4,i);
+
+                end
+            end
+
+            nSpks=cellfun(@length,t(find(~cellfun(@isempty,t))));
+
+            t=double(cell2mat(t(find(~cellfun(@isempty,t)))))/(obj.samplingFrequency(1)/1000);
+            ic = ic(:,ic(1,:)~=0);
+
+            fprintf('Saving results to %s\n',saveFileValid);
+            save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
+
+            neuronAmp=neuronAmp(GoodUtemplate);
+            
             save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
             
             if nargout==1 %if output is needed and calculation was needed (no saved file existing).
