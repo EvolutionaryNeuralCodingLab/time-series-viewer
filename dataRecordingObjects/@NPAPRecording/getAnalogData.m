@@ -41,8 +41,9 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
     end
     
     
-   digits(6) 
-   t_ms = vpa(0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000);
+   %digits(6) 
+   t_ms = 0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000;
+   t_ms= round(t_ms*1e6)/1e6;
 
 
     % =========================

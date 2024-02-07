@@ -450,8 +450,6 @@ classdef OERecording < dataRecording
                     obj.softwareVersion(i) = 0.0;
                 end
             end
-            obj.sample_ms=1e3/obj.samplingFrequency(1);
-            obj.ZeroADValue=zeros(size(obj.MicrovoltsPerAD));
 
             for i=1:numel(obj.channelFilesAnalog)
                 fseek(obj.fidA(i),0,'eof');
@@ -469,6 +467,8 @@ classdef OERecording < dataRecording
                 obj.dataDescriptionContAnalog{i}=header.description;
                 obj.fileHeadersAnalog{i} = header;
             end
+
+            obj.ZeroADValue=zeros(size(obj.MicrovoltsPerAD));
             obj.ZeroADValueAnalog=zeros(size(obj.MicrovoltsPerADAnalog));
 
             %prepare data structures for continuous - assumes that all channels have the same size structure and time stamps, else run separetly on every file
@@ -480,13 +480,22 @@ classdef OERecording < dataRecording
             if obj.softwareVersion < 0.1, obj.blkCont(1).Types = 'uint64'; obj.blkCont(2).Types = 'int16'; end
             obj.blkBytesCont = str2double(regexp({obj.blkCont.Types},'\d{1,2}$','match', 'once')) ./8 .* cell2mat({obj.blkCont.Repeat});
             obj.bytesPerRecCont=sum(obj.blkBytesCont);
-            obj.nRecordsCont = floor((obj.fileSize(1) - obj.headerSizeByte)/obj.bytesPerRecCont);
-            obj.recordLength = obj.dataSamplesPerRecord/obj.samplingFrequency(1)*1000;
-            
             
             fprintf('\nExtracting time stamp information...');
-            fseek(obj.fid(1), obj.headerSizeByte, 'bof');
-            obj.allTimeStamps = fread(obj.fid(1), obj.nRecordsCont*obj.blkCont(1).Repeat, sprintf('%d*%s', obj.blkCont(1).Repeat,obj.blkCont(1).Types), obj.bytesPerRecCont - obj.blkBytesCont(1), 'l')/obj.samplingFrequency(1)*1000;
+            if numel(obj.channelNumbers)==0
+                disp('0 electrode channels found in recording!');
+                obj.samplingFrequency(1)=obj.samplingFrequencyAnalog(1);
+                obj.nRecordsCont = floor((obj.fileSizeAnalog(1) - obj.headerSizeByte)/obj.bytesPerRecCont);
+                fid4Tests=obj.fidA(1);
+            else
+                obj.nRecordsCont = floor((obj.fileSize(1) - obj.headerSizeByte)/obj.bytesPerRecCont);
+                fid4Tests=obj.fid(1);
+            end
+            obj.recordLength = obj.dataSamplesPerRecord/obj.samplingFrequency(1)*1000; %must appear after extracting sampling frequency.
+            obj.sample_ms=1e3/obj.samplingFrequency(1);
+
+            fseek(fid4Tests, obj.headerSizeByte, 'bof');
+            obj.allTimeStamps = fread(fid4Tests, obj.nRecordsCont*obj.blkCont(1).Repeat, sprintf('%d*%s', obj.blkCont(1).Repeat,obj.blkCont(1).Types), obj.bytesPerRecCont - obj.blkBytesCont(1), 'l')/obj.samplingFrequency(1)*1000;
             obj.globalStartTime_ms=obj.allTimeStamps(1);
             obj.allTimeStamps = obj.allTimeStamps-obj.globalStartTime_ms; %time stamp vector must be a column vector!!!
             obj.recordingDuration_ms=obj.allTimeStamps(end);
@@ -494,8 +503,8 @@ classdef OERecording < dataRecording
             
             %check that all records have 1024 samples (data integrity check)
             fprintf('\nChecking integrity of all records in ch1...');
-            fseek(obj.fid(1), obj.headerSizeByte+obj.blkBytesCont(1), 'bof');
-            sampleNumbers = fread(obj.fid(1), obj.nRecordsCont*obj.blkCont(2).Repeat, sprintf('%d*%s', obj.blkCont(2).Repeat,obj.blkCont(2).Types), obj.bytesPerRecCont - obj.blkBytesCont(2), 'l');
+            fseek(fid4Tests, obj.headerSizeByte+obj.blkBytesCont(1), 'bof');
+            sampleNumbers = fread(fid4Tests, obj.nRecordsCont*obj.blkCont(2).Repeat, sprintf('%d*%s', obj.blkCont(2).Repeat,obj.blkCont(2).Types), obj.bytesPerRecCont - obj.blkBytesCont(2), 'l');
             if ~all(sampleNumbers == obj.dataSamplesPerRecord) && obj.version >= 0.1, error('Found currupted records!!! Please check manually'); end
             
             %prepare data structures for events
