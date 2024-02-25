@@ -413,7 +413,8 @@ classdef (Abstract) dataRecording < handle
                 
                 %check that all recorded channels are contained within the layout
                 if numel(obj.channelNumbers)>numel(intersect(obj.channelNumbers,En(:)))
-                    warning('Notice that some of the recorded channels are not contained in the layout file (%d channels), this may result in errors in further analysis!\nIf more than one probe is recorded, probe names can be comma seperate in chMap file',numel(obj.channelNumbers));
+                    warning(['Notice that some of the recorded channels (%d channels) are not contained in the layout file (%d channels), this may result in errors in further analysis!...' ...
+                        '\nIf more than one probe is recorded, probe names can be comma seperate in chMap file'],numel(obj.channelNumbers),sum(~isnan(En(:))));
                 end
             catch
                 fprintf('Failed to extract channel map!!!! check that the name was entered correctly\n');
