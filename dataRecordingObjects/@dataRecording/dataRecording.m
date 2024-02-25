@@ -434,6 +434,7 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'correctDrift',1,@isnumeric); % if to run drift correction (in any case drift will be examined)
             addParameter(parseObj,'ops',[]); % a structure with parameters
             addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
+            addParameter(parseObj,'runOnlySpikeDetection',0,@isnumeric); %stops after spike detection. Can be run again later
             addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
             addParameter(parseObj,'loadPreClustering',0,@isnumeric); % load pre clustering data.
 
