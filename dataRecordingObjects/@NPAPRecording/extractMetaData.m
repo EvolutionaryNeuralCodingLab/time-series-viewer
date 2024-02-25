@@ -154,30 +154,7 @@ end
     obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end-1)',ones(1,numel(chans1(1:end-1)))),'UniformOutput',0);
     %chans1names(9) = "XD0";
 
-    
-    %13.0 
-    
-    obj.chLayoutNumbers = metaAP.snsChanMap; %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
-
-    obj.chLayoutNames = (mat2cell(chans,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
-    
-    % electrodePitch % distance between electrodes (not critical)
-    
-    %13. chLayoutPositions % (1xN or 2xN or 3xN) array of electrode position in [x or x,y or x,y,z]
-    
-    ePosy = 20:20:3840;
-
-    ePosY=repelem(ePosy,2);
-    
-    ePosx =  [43 11 59 27];
-
-    ePosX = repmat(ePosx,1,384/4);
-
-    coor = [ePosX;ePosY];
-    obj.chLayoutPositions = coor;
-
-    %14. layoutName %the name of the channel layout (electrode type)
-    obj.layoutName = 'staggered-3B1';
+ 
 
     % FUNCTIONS TO RETURN CONVERSION FACTORS:
 
