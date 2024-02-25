@@ -436,6 +436,7 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
             addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
             addParameter(parseObj,'loadPreClustering',0,@isnumeric); % load pre clustering data.
+
             addParameter(parseObj,'outFolder',fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]),@ischar);
             if numel(varargin)==1
                 disp(parseObj.Results);
@@ -575,6 +576,10 @@ classdef (Abstract) dataRecording < handle
 
                 if ~isfolder(par.outFolder)
                     mkdir(par.outFolder);
+                end
+
+                if par.runOnlySpikeDetection
+                    return;
                 end
 
                 if par.saveOnlyPreClusteringData
