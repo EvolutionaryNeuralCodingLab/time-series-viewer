@@ -327,8 +327,8 @@ classdef OERecording < dataRecording
                     chTypeName=cellfun(@(x) x(end),chTypeName);
 
                     channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),chTypeName);
-                    pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
-                    pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
+                    pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),chTypeName,'UniformOutput',0));
                     obj.eventFileName=convertStringsToChars(obj.openEphyXMLStructureData.RECORDING.STREAM.EVENTS.filenameAttribute);
                 else
                     %get channel information from files in folder
@@ -416,8 +416,13 @@ classdef OERecording < dataRecording
             obj.channelFiles=channelFiles(pCh);
 
             obj.channelNumbers=channelNumbersAll(pCh);
+            if any(obj.channelNumbers==0)
+                obj.channelNumbers=obj.channelNumbers+1;
+            end
             obj.analogChannelNumbers=channelNumbersAll(pAnalogCh);
-            
+            if any(obj.analogChannelNumbers==0)
+                obj.analogChannelNumbers=obj.analogChannelNumbers+1;
+            end            
             obj.channelNames=channelNamesAll(pCh);
             obj.analogChannelNames=channelNamesAll(pAnalogCh);
             

@@ -1281,13 +1281,17 @@ classdef (Abstract) dataRecording < handle
                         end
                     end
                     fclose(fid);
-                    fclose(fidA);
+                    if ~isempty(fidA)
+                        fclose(fidA);
+                    end
                     fprintf('\nConversion complete!\n');
                     obj.convertData2Double=tempConvertData2Double; %return value to what it was
 
                 catch ME
                     fclose(fid);
-                    fclose(fidA);
+                    if ~isempty(fidA)
+                        fclose(fidA);
+                    end
                     obj.convertData2Double=tempConvertData2Double; %return value to what it was
                     fprintf('Error in conversion! - closing files...\n');
                     rethrow(ME)
@@ -1297,6 +1301,7 @@ classdef (Abstract) dataRecording < handle
             end
 
             %extracts trigger information
+            fidD=[];
             triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
             if ~exist(triggerFile,'file') || par.overwriteTriggerData
                 try %convert electrode data to binary
@@ -1328,7 +1333,9 @@ classdef (Abstract) dataRecording < handle
                     end
                     fclose(fidD);
                 catch ME
-                    fclose(fidD);
+                    if ~isempty(fidD)
+                        fclose(fidD);
+                    end
                     nT = [];
                     disp('No triggers found! Trigger file not created.\n');
                     rethrow(ME)
