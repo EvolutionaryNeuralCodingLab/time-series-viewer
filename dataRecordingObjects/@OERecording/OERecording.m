@@ -338,40 +338,43 @@ classdef OERecording < dataRecording
                     dataFileStrings=cellfun(@(x) split(x(1:end-numel(obj.fileExtension)-1),'_'),channelFiles,'UniformOutput',0);
                     nFields=numel(dataFileStrings{1});
                     if nFields==2
-                        recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
-                        channelNamesAll=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                        recordNodesFromFile=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                        channelNamesFromFile=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
                     elseif nFields==3
-                        recordNodes=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
-                        recordNodeNames=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
-                        channelNamesAll=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
+                        recordNodesFromFile=cellfun(@(x) x{1},dataFileStrings,'UniformOutput',0);
+                        recordNodeNamesFromFile=cellfun(@(x) x{2},dataFileStrings,'UniformOutput',0);
+                        channelNamesFromFile=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
                     end
-                    channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
-                    chTypeName=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
+                    channelNumbersFromFile=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesFromFile,'UniformOutput',1);
+                    chTypeNameFromFile=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesFromFile,'UniformOutput',0);
 
                     %get channel information from settings files
                     pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
                     chTypeNameSettings={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
-                    %deal with the situation in which the number of recorded channel files is different from XML 
+                    isRecorded={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL.SELECTIONSTATE};
+                    isRecorded=cellfun(@(x) x.paramAttribute,isRecorded);
+                    isRecorded=logical(isRecorded);
+
+                    channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),chTypeNameSettings);
+                    channelNamesAll=chTypeNameSettings(isRecorded);
+                    pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),channelNamesAll,'UniformOutput',0));
+                    pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),channelNamesAll,'UniformOutput',0));
+
+                    %deal with the situation in which the number of recorded channel files is different from XML
                     if numel(chTypeNameSettings)~=numel(dataFileStrings)
                         fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!\n trying to evaluate recorded channels...');
-                        isRecorded={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL.SELECTIONSTATE};
-                        isRecorded=cellfun(@(x) x.paramAttribute,isRecorded);
-                        isRecorded=logical(isRecorded);
+                        %pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
+                        %pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
+
                         if sum(isRecorded)==numel(dataFileStrings)
                             fprintf('success!');
                         end
                     else
-                        isRecorded=true(1,numel(chTypeNameSettings));
+                        if ~all(channelNumbersFromFile==channelNumbersAll)
+                            disp('Check the file names are ok')
+                            channelFiles(channelNumbersFromFile)=channelFiles;
+                        end
                     end
-
-                    if numel(chTypeName{1})==0
-                        pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeNameSettings(isRecorded),'UniformOutput',0));
-                        pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeNameSettings(isRecorded),'UniformOutput',0));
-                    else
-                        pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
-                        pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
-                    end
-
                 end
             else %for old recordings or recordigns with no settings files
                 obj.eventFileName='all_channels.events';
