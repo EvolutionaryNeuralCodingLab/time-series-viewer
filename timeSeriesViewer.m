@@ -64,6 +64,7 @@ AVG.Params.exportFigNumber=1; %initialize export figure counter
 AVG.Params.maxNumberOfTriggerInColumn=5; %the maximal number of trigger checkbox objects in a column - above this number stacking is also done over rows 
 AVG.Params.defaultTriggerOffset=0; % the default value for trigger offset
 AVG.Params.selectedAnalysis=[]; %initialize analysis options
+AVG.Params.selectedAnalysisAnalog=[]; %initialize analysis options
 AVG.Params.loadTriggerDefault=false; %how to inialize the load trigger mode
 
 %filter
@@ -111,11 +112,8 @@ AVG.Params.currentPlotName=AVG.Params.defaultPlotName;
 AVG.Params.analysisMethods=dir([AVG.Params.dataAnalysisDirectory 'analysis*.m']);
 AVG.Params.analysisMethods={AVG.Params.analysisMethods.name};
 AVG.Params.analysisMethods=cellfun(@(x) x(1:end-2),AVG.Params.analysisMethods,'UniformOutput',0);
+AVG.Params.pAnalogMethods=strncmp(AVG.Params.analysisMethods,'analysisAnalog',14); %reorder methods so that Filter is the first method in the menu
 AVG.Params.analysisMethodsNames=cellfun(@(x) x(9:end),AVG.Params.analysisMethods,'UniformOutput',0);
-%reorder methods so that Filter is the first method
-pFilter=strcmp(AVG.Params.analysisMethods,'analysisFilter');
-AVG.Params.analysisMethods=[AVG.Params.analysisMethods(pFilter) AVG.Params.analysisMethods(~pFilter)];
-AVG.Params.analysisMethodsNames=[AVG.Params.analysisMethodsNames(pFilter) AVG.Params.analysisMethodsNames(~pFilter)];
 
 %get all dataRecording objects
 AVG.Params.dataRecordingClasses=dir([AVG.Params.dataClassDirectory '@*']);
@@ -154,38 +152,49 @@ end
         %status==0 basic update
         %status==1 channel update
         set(AVG.hGen.messageBox,'string','Plotting data','ForegroundColor','r');drawnow;
-        %set channel data
+        
+        %set channel data -- check if this could be removed as in electrode data
         AVG.plotData.channelNumbers=AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces);
         AVG.plotData.channelNames=AVG.Params.channelNames(AVG.Params.activeChannelPlaces);
-        %set activity data
-        if any(AVG.Params.selectedAnalysis==1) % a filter was selected -> data is padded
+        AVG.Params.analogChannelNumbers=AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces);
+        AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces); 
+
+        %Update traces for electrode data
+        if AVG.hAnalysis.hApplyOnElectrodes.Tag=="on" % a filter was selected -> data is padded
             [AVG.plotData.M,AVG.plotData.T]=AVG.recordingObj.getData(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces),...
                 AVG.Params.startTime-AVG.Params.filterPadding,AVG.Params.window+2*AVG.Params.filterPadding);
+            [AVG.plotData.M,AVG.plotData.T]=AVG.filterObj.getFilteredData(AVG.plotData.M);
             for i=AVG.Params.selectedAnalysis
-                if i==1 %case filter
-                    [AVG.plotData.M,AVG.plotData.T]=AVG.filterObj.getFilteredData(AVG.plotData.M);
-                else
-                    feval(AVG.Params.analysisMethods{i},AVG.plotData);
-                end
+                feval(AVG.Params.analysisMethods{i},AVG.plotData);
             end
-            %implement a cut edges method for the parent class
             AVG.plotData.M=AVG.plotData.M(:,:,round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor) +1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor));
             AVG.plotData.T=AVG.plotData.T(1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor)*2); %the first time is 0
         else
-            [AVG.plotData.M,AVG.plotData.T]=AVG.recordingObj.getData(...
-                AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces),AVG.Params.startTime,AVG.Params.window);
-            for i=AVG.Params.selectedAnalysis
-                if i==1 %case filter
-                    AVG.plotData.M=AVG.filterObj.getFilteredData(AVG.plotData.M);
-                else
-                    feval(AVG.Params.analysisMethods{i},AVG.plotData);
-                end
+            [AVG.plotData.M,AVG.plotData.T]=AVG.recordingObj.getData(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces),AVG.Params.startTime,AVG.Params.window);
+            for i=AVG.Params.selectedAnalysis %no need to consider a filter only analysis
+                feval(AVG.Params.analysisMethods{i},AVG.plotData);
             end
         end
 
+        %Update traces for analog data
         if AVG.plotData.plotAnalogChannels
-            AVG.plotData.A=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),AVG.Params.startTime,AVG.Params.window);
-            AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces);
+            AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces); %check if this could be removed as in electrode data
+
+            if AVG.hAnalysis.hApplyOnAnalog.Tag=="on" % a filter was selected -> data is padded
+                [AVG.plotData.A,AVG.plotData.TA]=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),...
+                    AVG.Params.startTime-AVG.Params.filterPadding,AVG.Params.window+2*AVG.Params.filterPadding);
+                [AVG.plotData.A,AVG.plotData.TA]=AVG.filterObj.getFilteredData(AVG.plotData.A);
+                for i=AVG.Params.selectedAnalysisAnalog
+                    feval(AVG.Params.analysisMethods{i},AVG.plotData);
+                end
+                AVG.plotData.A=AVG.plotData.A(:,:,round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor) +1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor));
+                AVG.plotData.TA=AVG.plotData.TA(1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor)*2); %the first time is 0
+            else
+                [AVG.plotData.A,AVG.plotData.TA]=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),AVG.Params.startTime,AVG.Params.window);
+                for i=AVG.Params.selectedAnalysisAnalog %no need to consider a filter only analysis
+                    feval(AVG.Params.analysisMethods{i},AVG.plotData);
+                end
+            end
         end
 
         if AVG.hTrigger.hPlotTrigs.Value && AVG.Params.nCurrentTriggers>0
@@ -439,7 +448,7 @@ end
                 elseif nFrameGaps>2
                     fprintf('More than two >1 sec gaps found in triggers. Assuming relevant frames are within the largest gap...\n');
                 end
-                pStartEnd=find(diff(AVG.Params.triggerFrameSync)>1000 | diff(AVG.Params.triggerFrameSync)<-1000);
+                pStartEnd=find(diff(AVG.Params.triggerFrameSync)>1000);
                 [~,maxDiff]=max(diff(pStartEnd));
                 pStartEnd=pStartEnd(maxDiff:maxDiff+1);
                 AVG.Params.triggerFrameSync=AVG.Params.triggerFrameSync((pStartEnd(1)+1):pStartEnd(2));
@@ -467,6 +476,15 @@ end
                     AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
                     AVG.Params.pSync=str2num(AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String);
                 end
+            elseif AVG.Params.diffFrames<0
+                    msgbox({['Found ' num2str(AVG.Params.diffFrames) ' less frames in digital triggers than in video (' num2str(round(AVG.Params.nFramesVideo)) ')!!!'],...
+                        'Proceeding with analysis assuming extra frames were acquired equally from both sides by adding triggers'},'Attention','error','replace');
+                    extraFramesBefore=round(-AVG.Params.diffFrames/2);
+                    extraFramesAfter=-(AVG.Params.diffFrames+extraFramesBefore);
+                    AVG.Params.triggerFrameSync=AVG.Params.currentTrigger((pStartEnd(1)+1-extraFramesBefore):pStartEnd(2)+extraFramesAfter);
+                    AVG.hVideoSyncFigure.hCheckSyncPush.BackgroundColor=[0.5 0 0];
+                    AVG.hVideoSyncFigure.hValidSyncTriggersEdit.String=[num2str(-extraFramesBefore) ':' num2str(numel(AVG.Params.triggerFrameSync)-extraFramesBefore)];
+                    AVG.Params.pSync=1:numel(AVG.Params.triggerFrameSync);
             end
             AVG.Params.videoSyncVerified=true;
         end
@@ -899,14 +917,27 @@ end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Analysis Callbacks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function CallbackAnaysisTogglePush(hObj,Event,select)
-        if get(hObj,'value')
-            AVG.Params.selectedAnalysis=[AVG.Params.selectedAnalysis select];
+        isElectrodeMethod=~AVG.Params.pAnalogMethods(select);
+        if isElectrodeMethod
+            if get(hObj,'value')
+                AVG.Params.selectedAnalysis=[AVG.Params.selectedAnalysis select];
+            else
+                set(AVG.hAnalysis.hToggleButtons(select),'string',[AVG.Params.analysisMethodsNames{select} ' (-)']);
+                AVG.Params.selectedAnalysis(find(AVG.Params.selectedAnalysis==select))=[];
+            end
+            for i=1:numel(AVG.Params.selectedAnalysis)
+                set(AVG.hAnalysis.hToggleButtons(AVG.Params.selectedAnalysis(i)),'string',[AVG.Params.analysisMethodsNames{AVG.Params.selectedAnalysis(i)} ' (' num2str(i) ')']);
+            end
         else
-            set(AVG.hAnalysis.hToggleButtons(select),'string',[AVG.Params.analysisMethodsNames{select} ' (-)']);
-            AVG.Params.selectedAnalysis(find(AVG.Params.selectedAnalysis==select))=[];
-        end
-        for i=1:numel(AVG.Params.selectedAnalysis)
-            set(AVG.hAnalysis.hToggleButtons(AVG.Params.selectedAnalysis(i)),'string',[AVG.Params.analysisMethodsNames{AVG.Params.selectedAnalysis(i)} ' (' num2str(i) ')']);
+            if get(hObj,'value')
+                AVG.Params.selectedAnalysisAnalog=[AVG.Params.selectedAnalysisAnalog select];
+            else
+                set(AVG.hAnalysis.hToggleButtons(select),'string',[AVG.Params.analysisMethodsNames{select} ' (-)']);
+                AVG.Params.selectedAnalysisAnalog(find(AVG.Params.selectedAnalysisAnalog==select))=[];
+            end
+            for i=1:numel(AVG.Params.selectedAnalysisAnalog)
+                set(AVG.hAnalysis.hToggleButtons(AVG.Params.selectedAnalysisAnalog(i)),'string',[AVG.Params.analysisMethodsNames{AVG.Params.selectedAnalysisAnalog(i)} ' (' num2str(i) ')']);
+            end
         end
     end
     function CallbackRemoveAllAnalysisPush(hObj,event)
@@ -915,6 +946,16 @@ end
             set(AVG.hAnalysis.hToggleButtons(i),'string',[AVG.Params.analysisMethodsNames{i} ' (-)']);
         end
         AVG.Params.selectedAnalysis=[];
+        AVG.Params.selectedAnalysisAnalog=[];
+    end
+    function CallbackOnOff(hObj,event)
+        if hObj.Tag=="on"
+            hObj.BackgroundColor=[0.94 0.94 0.94];
+            hObj.Tag="off";
+        else
+            hObj.BackgroundColor=[0.5 0.7 0.5];
+            hObj.Tag="on";
+        end
     end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Trigger Callbacks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1314,14 +1355,21 @@ end
         set(AVG.hFilter.hMainVBox, 'Heights',[-1 30]);
         %% Construct analysis GUI
         AVG.hAnalysis.hMainVbox= uix.VBox( 'Parent', AVG.hAnalysis.hMainPanel, 'Spacing',5 );
-        AVG.hAnalysis.hMainGrid= uix.Grid( 'Parent', AVG.hAnalysis.hMainVbox, 'Spacing',10 );        
+        AVG.hAnalysis.hMainGrid= uix.Grid( 'Parent', AVG.hAnalysis.hMainVbox, 'Spacing',10 );
+
+        %add filter methods - one for electrode and one for analog data (the filter method is always first in place - set in startup)
         for i=1:numel(AVG.Params.analysisMethodsNames)
             AVG.hAnalysis.hToggleButtons(i)=uicontrol('Parent',AVG.hAnalysis.hMainGrid,'Callback',{@CallbackAnaysisTogglePush,i},...
-               'Style','toggle','String',[AVG.Params.analysisMethodsNames{i} ' (-)']);
+                'Style','toggle','String',[AVG.Params.analysisMethodsNames{i} ' (-)']);
         end
         set(AVG.hAnalysis.hMainGrid,'Widths',[-1 -1]);
-        AVG.hAnalysis.hRemoveAll=uicontrol('Parent',AVG.hAnalysis.hMainVbox,'Callback',{@CallbackRemoveAllAnalysisPush}, 'Style','push', 'String','Remove all','BackgroundColor',[0.5 0.7 0.5]);
-        set(AVG.hAnalysis.hMainVbox,'Heights',[-1 40]);
+
+        AVG.hAnalysis.hGlobalOpp=uix.HBox('Parent', AVG.hAnalysis.hMainVbox, 'Padding', 4, 'Spacing', 4);
+        AVG.hAnalysis.hApplyOnElectrodes=uicontrol('Parent',AVG.hAnalysis.hGlobalOpp,'Callback',{@CallbackOnOff}, 'Style','push', 'String','filter Elecs','Tooltip','If pressed, applies filter and analysis on electrode data traces');
+        AVG.hAnalysis.hApplyOnAnalog=uicontrol('Parent',AVG.hAnalysis.hGlobalOpp,'Callback',{@CallbackOnOff}, 'Style','push', 'String','filter Analog','Tooltip','If pressed, applies filter and analysis on analog data traces');
+        AVG.hAnalysis.hRemoveAll=uicontrol('Parent',AVG.hAnalysis.hGlobalOpp,'Callback',{@CallbackRemoveAllAnalysisPush}, 'Style','push', 'String','Remove all','BackgroundColor',[0.8 0.5 0.5]);
+        
+        set(AVG.hAnalysis.hMainVbox,'Heights',[-1 30]);
         %% Construct Trigger Box
         AVG.hTrigger.MainVBox=uix.VBox('Parent', AVG.hTrigger.hMainTriggerPanel, 'Padding', 4, 'Spacing', 4);
         

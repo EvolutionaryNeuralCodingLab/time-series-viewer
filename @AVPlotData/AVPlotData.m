@@ -1,7 +1,8 @@
 classdef AVPlotData < handle
     properties
         layoutName={};          %layout of electrode if existing 
-        T=[];                   %time vector
+        T=[];                   %time vector electrode
+        TA=[];                  %time vector analog - can be different if decimation filter is used
         startTime=[];           %recording start time
         nCh=[];                 %number of channels
         nTrials=[];             %number of trials
