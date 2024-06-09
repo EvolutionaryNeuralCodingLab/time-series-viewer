@@ -562,10 +562,20 @@ end
     end
 
     function CallbackRunVideoPush(hObj,event)
+        if AVG.Params.runActive
+            msgbox('Video is running in single frame mode, push single frame to advance');
+            return;
+        end
         hObj.BackgroundColor=[0 1 0];
         AVG.Params.runActive=true;
         if AVG.Params.videoSyncVerified
             pFrames=find(AVG.Params.triggerFrameSync(AVG.Params.pSync)>AVG.Params.startTime & AVG.Params.triggerFrameSync(AVG.Params.pSync)<(AVG.Params.startTime+AVG.Params.window));
+            if isempty(pFrames)
+                msgbox(['No video frames in segment! video exists between ' num2str(AVG.Params.triggerFrameSync(AVG.Params.pSync([1,end])))],'Attention','error','replace');
+                hObj.BackgroundColor=[0.8 0.8 0.8];
+                AVG.Params.runActive=false;
+                return;
+            end
             %startFrame=find(AVG.Params.triggerFrameSync(AVG.Params.pSync)>AVG.Params.startTime,1,'first');
             %endFrame=find(AVG.Params.triggerFrameSync(AVG.Params.pSync)<(AVG.Params.startTime+AVG.Params.window),1,'last');
             nActFrames=numel(pFrames);

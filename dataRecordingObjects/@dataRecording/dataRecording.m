@@ -433,6 +433,7 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'tEnd',Inf,@isnumeric); % in milliseconds
             addParameter(parseObj,'correctDrift',1,@isnumeric); % if to run drift correction (in any case drift will be examined)
             addParameter(parseObj,'ops',[]); % a structure with parameters
+            addParameter(parseObj,'runManualCurationPhy',1); %run manual curation in phy after sorting
             addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
             addParameter(parseObj,'runOnlySpikeDetection',0,@isnumeric); %stops after spike detection. Can be run again later
             addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
@@ -601,8 +602,9 @@ classdef (Abstract) dataRecording < handle
                     rez                = template_learning(rezSpk, tF, st3);
                 catch
                     disp('Error with CUDA, trying again!');
-                    pause(10);
-                    rez                = template_learning(rezSpk, tF, st3);
+                    rez                = template_learning2(rezSpk, tF, st3);
+                    %pause(2);
+                    %rez                = template_learning(rezSpk, tF, st3);
                 end
                 [rez, st3, tF]     = trackAndSort(rez);
                 rez                = final_clustering(rez, tF, st3);
@@ -633,6 +635,13 @@ classdef (Abstract) dataRecording < handle
             
             if ~par.loadPreClustering
                 delete(tmpSaveFile);
+            end
+
+            %run manual curation with Phy
+            if par.runManualCurationPhy
+                %conda('activate','phy2')
+                setenv('PATH','/home/mark/anaconda3/envs/phy2/bin:/sbin:/bin:/usr/bin:/usr/local/bin:/snap/bin:/home/mark/anaconda3/bin');%set phy2 environment
+                system(['phy template-gui "' fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]) filesep 'params.py"']);%run phy on current analysis object
             end
         end
 
