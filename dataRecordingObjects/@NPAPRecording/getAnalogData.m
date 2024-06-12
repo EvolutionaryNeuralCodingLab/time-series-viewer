@@ -210,7 +210,7 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
         for i = 1:length(chanList)
             j = chanList(i);    % index into timepoint
             conv = fI2V / ChanGainNI(j, MN, MA, meta);
-            dataArray(j,:) = dataArray(j,:) * conv;
+            dataArray(i,:) = dataArray(i,:) * conv;
         end
     end
 
