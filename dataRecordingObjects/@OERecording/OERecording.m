@@ -346,9 +346,11 @@ classdef OERecording < dataRecording
                         channelNamesFromFile=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
                     end
                     channelNumbersFromFile=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesFromFile,'UniformOutput',1);
-                    chTypeNameFromFile=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesFromFile,'UniformOutput',0);
+                    chTypeNameFromFile=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesFromFile,'UniformOutput',1);
+                    pAnalogChFromFile=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),chTypeNameFromFile,'UniformOutput',0));
+                    pChFromFile=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),chTypeNameFromFile,'UniformOutput',0));
 
-                    %get channel information from settings files
+                    %get channel information from settings files - including channel numbers - these may be in different order than the recorded files.
                     pSources=find(cellfun(@(x) x=="Rhythm FPGA",processorNames));
                     chTypeNameSettings={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL_INFO.CHANNEL.nameAttribute};
                     isRecorded={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR(pSources).CHANNEL.SELECTIONSTATE};
@@ -366,13 +368,18 @@ classdef OERecording < dataRecording
                         %pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
                         %pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
 
-                        if sum(isRecorded)==numel(dataFileStrings)
+                        if all(channelNumbersAll(isRecorded)==channelNumbersFromFile)
                             fprintf('success!');
+                        else
+                            error('Something is wrong with the order in xml vs files - see solution implemented below');
                         end
                     else
                         if ~all(channelNumbersFromFile==channelNumbersAll)
-                            disp('Check the file names are ok')
-                            channelFiles(channelNumbersFromFile)=channelFiles;
+                            disp('Channel file names are in a different order than in xml file!!! sorting this out...');
+                            channelFilesCopy=channelFiles;
+                            channelFiles(pAnalogCh)=channelFilesCopy(pAnalogChFromFile);
+                            channelFiles(pCh(channelNumbersFromFile(pChFromFile)))=channelFilesCopy(pChFromFile);
+                            disp('done!')
                         end
                     end
                 end
