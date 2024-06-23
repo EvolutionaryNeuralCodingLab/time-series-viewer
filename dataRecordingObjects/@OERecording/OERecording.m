@@ -6,7 +6,11 @@ classdef OERecording < dataRecording
         evntFileSize
         fileSize
         fileSizeAnalog
-        
+        channelNameFromHeader
+        channelTypeFromHeader
+        channelNameFromHeaderAnalog
+        channelTypeFromHeaderAnalog
+
         n2sA
         fileHeaders
         fileHeadersAnalog
@@ -36,6 +40,7 @@ classdef OERecording < dataRecording
         eventFileName
         
         softwareVersion
+        softwareVersionAnalog
         openEphyXMLData
         openEphyXMLStructureData
         
@@ -367,11 +372,14 @@ classdef OERecording < dataRecording
                         fprintf('\nWarning!!! The number of files in the folder is different from the number of files in settings.xlm!!!\n trying to evaluate recorded channels...');
                         %pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
                         %pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),chTypeName(isRecorded),'UniformOutput',0));
-
-                        if all(channelNumbersAll(isRecorded)==channelNumbersFromFile)
-                            fprintf('success!');
+                        if sum(isRecorded)==numel(channelNumbersFromFile)
+                            if all(channelNumbersAll(isRecorded)==channelNumbersFromFile)
+                                fprintf('success!');
+                            else
+                                error('Something is wrong with the order in xml vs files - see solution implemented below');
+                            end
                         else
-                            error('Something is wrong with the order in xml vs files - see solution implemented below');
+                            error('Something is wrong with the xml file! Try to rename the files (including the xlm such that it wont be read');
                         end
                     else
                         if ~all(channelNumbersFromFile==channelNumbersAll)
@@ -398,7 +406,7 @@ classdef OERecording < dataRecording
                     channelNamesAll=cellfun(@(x) x{3},dataFileStrings,'UniformOutput',0);
                 end
                 channelNumbersAll=cellfun(@(x) str2double(regexp(x,'\d+','match')),channelNamesAll,'UniformOutput',1);
-                channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',0);
+                channelPrefixAll=cellfun(@(x) regexp(x,'[A-Z]+','match'),channelNamesAll,'UniformOutput',1);
                 pAnalogCh=cellfun(@(x) x(1:2)=="AU" | x(1:2)=="AD",cellfun(@(x) char(x),channelPrefixAll,'UniformOutput',0));%this may require updating for old versions of open ephys
                 pCh=cellfun(@(x) x(1:2)=="CH",cellfun(@(x) char(x),channelPrefixAll,'UniformOutput',0));%this may require updating for old versions of open ephys
             end
@@ -471,6 +479,8 @@ classdef OERecording < dataRecording
                 obj.fileHeaders{i} = header;
                 if isfield(header, 'version')
                     obj.softwareVersion(i) = header.version;
+                    obj.channelNameFromHeader{i}=header.channel;
+                    obj.channelTypeFromHeader{i}=header.channelType;
                 else
                     obj.softwareVersion(i) = 0.0;
                 end
@@ -491,6 +501,14 @@ classdef OERecording < dataRecording
                 obj.blockLengthAnalog(i)=header.blockLength;
                 obj.dataDescriptionContAnalog{i}=header.description;
                 obj.fileHeadersAnalog{i} = header;
+
+                if isfield(header, 'version')
+                    obj.softwareVersionAnalog(i) = header.version;
+                    obj.channelNameFromHeaderAnalog{i}=header.channel;
+                    obj.channelTypeFromHeaderAnalog{i}=header.channelType;
+                else
+                    obj.softwareVersion(i) = 0.0;
+                end
             end
 
             obj.ZeroADValue=zeros(size(obj.MicrovoltsPerAD));
