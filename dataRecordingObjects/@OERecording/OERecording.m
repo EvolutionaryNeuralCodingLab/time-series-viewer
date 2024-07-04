@@ -365,10 +365,10 @@ classdef OERecording < dataRecording
             end
 
             %get data from xml file
+            xmlData=[];
             if exist([obj.recordingDir filesep 'settings.xml'],'file')
                 obj.openEphyXMLData = readstruct([obj.recordingDir filesep 'settings.xml']);
-
-                xmlData=[];
+                
                 if obj.openEphyXMLData.INFO.VERSION>"0.6.0"
                     obj.openEphyXMLStructureData = readstruct([obj.recordingDir filesep 'structure.openephys'],'FileType','xml');
                     xmlData.channelNamesAll={obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.nameAttribute};
@@ -410,7 +410,7 @@ classdef OERecording < dataRecording
                     end
                 else
                     fprintf('There is mismatch between the settings xml and the data files!\nIf file data is correct, rename the xml file and run again. This will extract all information from the recording files\n');
-                    return;
+                    %return;
                 end
             else
                 fprintf('settings.xml file not found! Extracting infor from coninuous recording files.\n');
