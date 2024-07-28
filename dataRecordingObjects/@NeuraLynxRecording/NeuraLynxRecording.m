@@ -236,12 +236,13 @@ classdef NeuraLynxRecording < dataRecording
             obj=obj.getRecordingFiles(recordingFile);
             obj.recordingDir=[obj.recordingDir filesep obj.recordingName];
             
-            if exist([obj.recordingDir '\metaData.mat'],'file')
-                obj=loadMetaData(obj);
+            metaDataFile=[obj.recordingDir filesep 'metaData.mat'];
+            if exist(metaDataFile,'file')
+                obj=loadMetaData(obj,metaDataFile);
             else
                 obj=getChannelInformation(obj);
                 obj=getHeaderInformation(obj);
-                triggerNames=dir([obj.recordingDir '\*.nev']);
+                triggerNames=dir([obj.recordingDir filesep '*.nev']);
                 if numel(triggerNames)~=1
                     disp('triggers not extracted - more than one trigger file in directory');
                 else
@@ -265,8 +266,12 @@ classdef NeuraLynxRecording < dataRecording
             nCh=numel(obj.channelNumbers);
             for i=1:nCh
                 waitbar(i / nCh)
-                records=Nlx2MatCSC_v3([obj.recordingDir filesep obj.dataFileNames{i}],[0 0 0 1 0],0,1,[]);
-                %records=NlxCSC2mat([obj.recordingDir filesep obj.dataFileNames{i}],[0 0 0 1 0],0,1,[]);
+                try
+                    records=Nlx2MatCSC_v3([obj.recordingDir filesep obj.dataFileNames{i}],[0 0 0 1 0],0,1,[]);
+                catch
+                    records=[];
+                end
+                %records=Mat2NlxCSC([obj.recordingDir filesep obj.dataFileNames{i}],[0 0 0 1 0],0,1,[]);
                 %Check if using Nlx2MatCSC_v3 is faster
                 obj.nRecordsPerChannel(i) = numel(records);
             end
