@@ -19,13 +19,22 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
     chanList = channels;
 
     nSamp = round((window_ms/1000)*str2double(meta.niSampRate));
+
+    nChan = str2double(meta.nSavedChans);
+
+    nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
+
+    nSamp = min(nSamp, nFileSamp);
+     
     
     V_uV = zeros(length(channels),length(startTime_ms),nSamp);
+
 
  
     for trials = 1:length(startTime_ms)
 
         t0= startTime_ms(trials)/1000;
+        
         samp0 = round(t0*str2double(meta.niSampRate));
     
         dataArray = ReadBin(samp0, nSamp, meta, binName, path);
