@@ -645,7 +645,7 @@ classdef (Abstract) dataRecording < handle
             end
         end
 
-        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,varargin)%GUIbc,rerun)
+        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,GUIbc,rerun)%GUIbc,rerun)
 
             if nargin <3 
                 GUIbc = 0;
@@ -680,7 +680,14 @@ classdef (Abstract) dataRecording < handle
             param = bc_qualityParamValues(ephysMetaDir, rawFile, pathToKSresults); %for unitmatch, run this:
             % param = bc_qualityParamValuesForUnitMatch(ephysMetaDir, rawFile, ephysKilosortPath, gain_to_uV)
 
-            param.firstPeakRatio = 1.3;
+%             param.firstPeakRatio = 1.3;
+%             param.minThreshDetectPeaksTroughs = 0.1;
+%             param.minThreshDetectPeaksTroughs = 
+% 
+%             param.minSpatialDecaySlope
+
+
+           % param.maxWvBaselineFraction = 
 
             %%% compute quality metrics
           
@@ -699,7 +706,7 @@ classdef (Abstract) dataRecording < handle
             % load data for GUI
 
             if GUIbc == 1
-                loadRawTraces = 1; % default: don't load in raw data (this makes the GUI significantly faster)
+                loadRawTraces = 0; % default: don't load in raw data (this makes the GUI significantly faster)
                 bc_loadMetricsForGUI;
 
                 % GUI guide:
@@ -875,15 +882,15 @@ classdef (Abstract) dataRecording < handle
 
             cd(pathToBCResults);
 
-            clusterTable=readtable([pathToBCResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
-            clusterTable=sortrows(clusterTable,'ch');
+            %clusterTable=readtable([pathToBCResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
+            %clusterTable=sortrows(clusterTable,'ch');
             qMetric=sortrows(qMetric,'maxChannels');
             %spike_templates = readNPY([pathToPhyResults filesep 'spike_templates.npy']);
             spikeTimes_samplesND = spike_times(~dspikes); %exclude duplicate spikes
             spikeTemplatesND = spike_clusters(~dspikes);%exclude duplicate spikes
             labelVec = {'noise','good','mua','non-somatic'};
             label = arrayfun(@(x) labelVec{x}, unitType+1, 'UniformOutput', false); %Replace values of label by their meaning
-            neuronAmp=clusterTable.amp;
+            %neuronAmp=clusterTable.amp;
                
             GoodUtemplate = find(unitType ~= 0); %Selects everything except noise units
 
@@ -919,14 +926,14 @@ classdef (Abstract) dataRecording < handle
             nSpks=cellfun(@length,t(find(~cellfun(@isempty,t))));
 
             t=double(cell2mat(t(find(~cellfun(@isempty,t)))))/(obj.samplingFrequency(1)/1000);
-            ic = ic(:,ic(1,:)~=0);
+            dic = ic(:,ic(1,:)~=0);
 
             fprintf('Saving results to %s\n',saveFileValid);
-            save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
+            save(saveFileAll,'t','ic','label','nSpks'); %save full spikes including noise
 
-            neuronAmp=neuronAmp(GoodUtemplate);
+            %neuronAmp=neuronAmp(GoodUtemplate);
             
-            save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
+            save(saveFileValid,'t','ic','label','nSpks');
             
             if nargout==1 %if output is needed and calculation was needed (no saved file existing).
                 spkData=load(saveFileValid);
