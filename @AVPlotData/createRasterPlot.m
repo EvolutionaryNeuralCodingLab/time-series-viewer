@@ -9,7 +9,7 @@ obj.plotParams.binNumber=500;
 if isfield('obj.recordingObjReference','timeBin') %if an AI object with time bin is used
     obj.plotParams.timeBin=obj.recordingObjReference.timeBin;
 else %use the sampling frequency as the time bin
-    obj.plotParams.timeBin=1000/obj.recordingObjReference.samplingFrequency;
+    obj.plotParams.timeBin=1000/obj.recordingObjReference.samplingFrequency(1);
 end
 obj.plotParams.plotChannelNumbers=1;
 

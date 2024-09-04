@@ -65,4 +65,23 @@ Enp=Enp-min(Enp')'*ones(1,32);
 
 save('layout_40_16x2_FlexLin.mat','En','Ena','Enp');
 
+%% calculate invrted
+
+load layout_40_16x2_FlexLin;
+regular=1:32;
+inverted=[17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16];
+
+En2=En;
+Ena2=Ena;
+Enp2=Enp;
+for i=1:32
+    En2(find(En==i))=inverted(i);
+    Ena2{find(En==i)}=Ena{find(En==inverted(i))};
+end
+Enp2=Enp(:,inverted);
+
+En=En2;
+Ena=Ena2;
+Enp=Enp2;
+save layout_40_16x2_FlexLin_inverted.mat Enp Ena En;
 

@@ -413,7 +413,8 @@ classdef (Abstract) dataRecording < handle
                 
                 %check that all recorded channels are contained within the layout
                 if numel(obj.channelNumbers)>numel(intersect(obj.channelNumbers,En(:)))
-                    warning('Notice that some of the recorded channels are not contained in the layout file (%d channels), this may result in errors in further analysis!\nIf more than one probe is recorded, probe names can be comma seperate in chMap file',numel(obj.channelNumbers));
+                    warning(['Notice that some of the recorded channels (%d channels) are not contained in the layout file (%d channels), this may result in errors in further analysis!...' ...
+                        '\nIf more than one probe is recorded, probe names can be comma seperate in chMap file'],numel(obj.channelNumbers),sum(~isnan(En(:))));
                 end
             catch
                 fprintf('Failed to extract channel map!!!! check that the name was entered correctly\n');
@@ -432,9 +433,12 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'tEnd',Inf,@isnumeric); % in milliseconds
             addParameter(parseObj,'correctDrift',1,@isnumeric); % if to run drift correction (in any case drift will be examined)
             addParameter(parseObj,'ops',[]); % a structure with parameters
+            addParameter(parseObj,'runManualCurationPhy',1); %run manual curation in phy after sorting
             addParameter(parseObj,'overwrite',0,@isnumeric); %overwrite everything
+            addParameter(parseObj,'runOnlySpikeDetection',0,@isnumeric); %stops after spike detection. Can be run again later
             addParameter(parseObj,'saveOnlyPreClusteringData',0,@isnumeric); %save the data just before clustering so that this step could be repeated
             addParameter(parseObj,'loadPreClustering',0,@isnumeric); % load pre clustering data.
+
             addParameter(parseObj,'outFolder',fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]),@ischar);
             if numel(varargin)==1
                 disp(parseObj.Results);
@@ -576,6 +580,10 @@ classdef (Abstract) dataRecording < handle
                     mkdir(par.outFolder);
                 end
 
+                if par.runOnlySpikeDetection
+                    return;
+                end
+
                 if par.saveOnlyPreClusteringData
                     disp('A copy of the pre-clustering results will not be deleted after sorting. Make sure to delete manually when not needed!')
                     save([par.outFolder,filesep,'preClusteringResults.mat'],'rezSpk','tF','st3'); %the parameter file ops is included
@@ -594,8 +602,9 @@ classdef (Abstract) dataRecording < handle
                     rez                = template_learning(rezSpk, tF, st3);
                 catch
                     disp('Error with CUDA, trying again!');
-                    pause(10);
-                    rez                = template_learning(rezSpk, tF, st3);
+                    rez                = template_learning2(rezSpk, tF, st3);
+                    %pause(2);
+                    %rez                = template_learning(rezSpk, tF, st3);
                 end
                 [rez, st3, tF]     = trackAndSort(rez);
                 rez                = final_clustering(rez, tF, st3);
@@ -626,6 +635,13 @@ classdef (Abstract) dataRecording < handle
             
             if ~par.loadPreClustering
                 delete(tmpSaveFile);
+            end
+
+            %run manual curation with Phy
+            if par.runManualCurationPhy
+                %conda('activate','phy2')
+                setenv('PATH','/home/mark/anaconda3/envs/phy2/bin:/sbin:/bin:/usr/bin:/usr/local/bin:/snap/bin:/home/mark/anaconda3/bin');%set phy2 environment
+                system(['phy template-gui "' fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]) filesep 'params.py"']);%run phy on current analysis object
             end
         end
 
@@ -1281,13 +1297,17 @@ classdef (Abstract) dataRecording < handle
                         end
                     end
                     fclose(fid);
-                    fclose(fidA);
+                    if ~isempty(fidA)
+                        fclose(fidA);
+                    end
                     fprintf('\nConversion complete!\n');
                     obj.convertData2Double=tempConvertData2Double; %return value to what it was
 
                 catch ME
                     fclose(fid);
-                    fclose(fidA);
+                    if ~isempty(fidA)
+                        fclose(fidA);
+                    end
                     obj.convertData2Double=tempConvertData2Double; %return value to what it was
                     fprintf('Error in conversion! - closing files...\n');
                     rethrow(ME)
@@ -1297,6 +1317,7 @@ classdef (Abstract) dataRecording < handle
             end
 
             %extracts trigger information
+            fidD=[];
             triggerFile=[targetFileBase(1:end-4) '_Triggers.bin'];
             if ~exist(triggerFile,'file') || par.overwriteTriggerData
                 try %convert electrode data to binary
@@ -1328,7 +1349,9 @@ classdef (Abstract) dataRecording < handle
                     end
                     fclose(fidD);
                 catch ME
-                    fclose(fidD);
+                    if ~isempty(fidD)
+                        fclose(fidD);
+                    end
                     nT = [];
                     disp('No triggers found! Trigger file not created.\n');
                     rethrow(ME)
@@ -1479,6 +1502,9 @@ classdef (Abstract) dataRecording < handle
                 else
                     obj.metaDataFile=[obj.recordingDir{1} filesep obj.recordingName '_metaData.mat'];
                 end
+            end
+            if obj.recordingDir(end)=='/'
+                obj.recordingDir=obj.recordingDir(1:end-1);
             end
         end
 

@@ -1,7 +1,8 @@
 classdef AVPlotData < handle
     properties
         layoutName={};          %layout of electrode if existing 
-        T=[];                   %time vector
+        T=[];                   %time vector electrode
+        TA=[];                  %time vector analog - can be different if decimation filter is used
         startTime=[];           %recording start time
         nCh=[];                 %number of channels
         nTrials=[];             %number of trials
@@ -32,12 +33,13 @@ classdef AVPlotData < handle
         M=[];                   %activity data [nChannels x nTrials x nSamples]
         channelNumbers=[];      %channel numbers
         A=[];                   %analog data [nChannels x nTrials x nSamples]
+        trigMarks = [];
     end
     methods
         %class constractor
         function obj=AVPlotData(startMethod)
             addlistener(obj,'M','PostSet',@obj.changedActivityData); %add a listener to M, after its changed its size is updated in the changedDataEvent method
-            addlistener(obj,'channelNumbers','PostSet',@obj.changedChannelNumber); %add a listener to M, after its changed its size is updated in the changedDataEvent method
+            addlistener(obj,'channelNumbers','PostSet',@obj.changedChannelNumber); %add a listener to channelNumbers, after its changed its size is updated in the changedDataEvent method
             %get the plot names
             allMethods=methods(class(obj));
             obj.plotMethods=allMethods(strncmp('plot',allMethods,4));
@@ -124,7 +126,7 @@ classdef AVPlotData < handle
             end
             obj.plotParams=[];
             obj.hPlotAxis=hPlotAxis;
-            set(obj.hPlotAxis,'XTickMode','auto','YTickMode','auto');
+            set(obj.hPlotAxis,'XTickMode','auto','YTickMode','auto','yscale','lin');
             obj.hControlPanel=hControlPanel;
             obj.currentPlotIdx=strcmp(obj.plotNames,plotName);
             obj.(obj.plotCreateMethods{obj.currentPlotIdx});

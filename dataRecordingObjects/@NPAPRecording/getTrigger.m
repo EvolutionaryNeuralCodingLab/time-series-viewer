@@ -15,7 +15,7 @@ syncdir = string(obj.recordingDir) + filesep + "sync_events"; %Determine dir.
 
     for n =1:length(filenames)
     
-        T_ms{n} = 1000*importdata(string(syncdir) +filesep+ filenames(n));
+        T_ms{n} = 1000*importdata(string(syncdir) +filesep+ filenames(n))';
     
     end
 
