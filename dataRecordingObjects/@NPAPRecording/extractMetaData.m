@@ -154,6 +154,27 @@ end
     obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end-1)',ones(1,numel(chans1(1:end-1)))),'UniformOutput',0);
     %chans1names(9) = "XD0";
 
+    %13. ChannelMap
+
+    if isfield(metaAP,'snsGeomMap')
+        [nShank, shankWidth, shankPitch, shankInd, xCoord, yCoord, connected] = geomMapToGeom(metaAP);
+    elseif isfield(metaAP,'snsShankMap')
+        [nShank, shankWidth, shankPitch, shankInd, xCoord, yCoord, connected] = shankMapToGeom(metaAP);
+    end
+
+    nchans = numel(xCoord);
+    chanPos = zeros(2,nchans);
+    for i = 1:nchans
+        currX = shankInd(i)*shankPitch + xCoord(i);
+        %fprintf( fid, '%d\t%d\t%d\t%d\n', i-1, currX, yCoord(i), shankInd(i));
+
+        chanPos(1,i) = currX;
+        chanPos(2,i) = yCoord(i);
+    end
+
+    obj.chLayoutPositions = chanPos;
+
+
  
 
     % FUNCTIONS TO RETURN CONVERSION FACTORS:
@@ -319,5 +340,328 @@ end
             
     %disp('saving meta data');
     %obj.saveMetaData(metaAP);
+
+
+    % =========================================================
+    % Parse snsGeomMap for XY coordinates
+    %
+    function [nShank, shankWidth, shankPitch, shankInd, xCoord, yCoord, connected] = geomMapToGeom(meta)
+
+        C = textscan(meta.snsGeomMap, '(%d:%d:%d:%d', ...
+            'EndOfLine', ')', 'HeaderLines', 1 );
+        shankInd = double(cell2mat(C(1)));
+        xCoord = double(cell2mat(C(2)));
+        yCoord = double(cell2mat(C(3)));
+        connected = double(cell2mat(C(4)));
+
+        % parse header for number of shanks
+        geomStr = meta.snsGeomMap;
+        headStr = extractBefore(geomStr,')(');
+        headParts = split(headStr,',');
+        nShank = str2double(headParts{2});
+        shankWidth = str2double(headParts{4});
+        shankPitch = str2double(headParts{3});
+    end % geomMapToGeom
+
+% =========================================================
+% Get XY coordinates from snsShankMap plus hard coded geom values
+%
+    function [nShank, shankWidth, shankPitch, shankInd, xCoord, yCoord, connected] = shankMapToGeom(meta)
+        % get number of saved AP channels (some early metadata files have a
+        % SYNC entry in the snsChanMap
+        [nchan,~,~] = ChannelCountsIM(meta);
+
+        C = textscan(meta.snsShankMap, '(%d:%d:%d:%d', ...
+            'EndOfLine', ')', 'HeaderLines', 1 );
+        shankInd = double(cell2mat(C(1)));
+        colInd = double(cell2mat(C(2)));
+        rowInd = double(cell2mat(C(3)));
+        connected = double(cell2mat(C(4)));
+
+        % trim these to the number of saved channels
+        shankInd = shankInd(1:nchan);
+        colInd = colInd(1:nchan);
+        rowInd = rowInd(1:nchan);
+        connected = connected(1:nchan);
+
+        geom = getGeomParams(meta);
+
+        oddRows = logical(mod(rowInd,2));
+        evenRows = ~oddRows;
+        xCoord = colInd*geom.horzPitch;
+        xCoord(evenRows) = xCoord(evenRows) + geom.even_xOff ;
+        xCoord(oddRows) = xCoord(oddRows) + geom.odd_xOff;
+        yCoord = rowInd*geom.vertPitch;
+
+        nShank = geom.nShank;
+        shankWidth = geom.shankWidth;
+        shankPitch = geom.shankPitch;
+    end % shankMapToGeom
+
+% =========================================================
+% Return counts of each imec channel type that compose
+% the timepoints stored in binary file.
+%
+    function [AP,LF,SY] = ChannelCountsIM(meta)
+        M = str2num(meta.snsApLfSy);
+        AP = M(1);
+        LF = M(2);
+        SY = M(3);
+    end % ChannelCountsIM
+
+
+% =========================================================
+% Return geometry paramters for supported probe types
+% These are used to calculate positions from metadata
+% that includes only ~snsShankMap
+%
+    function geom = getGeomParams(meta)
+        % create map
+        geomTypeMap = makeTypeMap();
+
+        % get probe part number; if absent, this is a 3A
+        if isfield(meta,'imDatPrb_pn')
+            pn = meta.imDatPrb_pn;
+        else
+            pn = '3A';
+        end
+
+        if geomTypeMap.isKey(pn)
+            geomType = geomTypeMap(pn);
+        else
+            fprintf('unsupported probe part number\n');
+            return;
+        end
+
+        switch geomType
+            case 'np1_stag_70um'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 32;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 480;
+                geom.elecPerShank = 960;
+            case 'nhp_lin_70um'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 27;
+                geom.horzPitch = 32;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 480;
+                geom.elecPerShank = 960;
+            case 'nhp_stag_125um_med'
+                geom.nShank = 1;
+                geom.shankWidth = 125;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 87;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 1368;
+                geom.elecPerShank = 2496;
+            case 'nhp_stag_125um_long'
+                geom.nShank = 1;
+                geom.shankWidth = 125;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 87;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 2208;
+                geom.elecPerShank = 4416;
+            case 'nhp_lin_125um_med'
+                geom.nShank = 1;
+                geom.shankWidth = 125;
+                geom.shankPitch = 0;
+                geom.even_xOff = 11;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 103;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 1368;
+                geom.elecPerShank = 2496;
+            case 'nhp_lin_125um_long'
+                geom.nShank = 1;
+                geom.shankWidth = 125;
+                geom.shankPitch = 0;
+                geom.even_xOff = 11;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 103;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 2208;
+                geom.elecPerShank = 4416;
+            case 'uhd_8col_1bank'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 14;
+                geom.odd_xOff = 14;
+                geom.horzPitch = 6;
+                geom.vertPitch = 6;
+                geom.rowsPerShank = 48;
+                geom.elecPerShank = 384;
+            case 'uhd_8col_16bank'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 14;
+                geom.odd_xOff = 14;
+                geom.horzPitch = 6;
+                geom.vertPitch = 6;
+                geom.rowsPerShank = 768;
+                geom.elecPerShank = 6144;
+            case 'np2_ss'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 27;
+                geom.horzPitch = 32;
+                geom.vertPitch = 15;
+                geom.rowsPerShank = 640;
+                geom.elecPerShank = 1280;
+            case 'np2_4s'
+                geom.nShank = 4;
+                geom.shankWidth = 70;
+                geom.shankPitch = 250;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 27;
+                geom.horzPitch = 32;
+                geom.vertPitch = 15;
+                geom.rowsPerShank = 640;
+                geom.elecPerShank = 1280;
+            case 'NP1120'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 6.75;
+                geom.odd_xOff = 6.75;
+                geom.horzPitch = 4.5;
+                geom.vertPitch = 4.5;
+                geom.rowsPerShank = 192;
+                geom.elecPerShank = 384;
+            case 'NP1121'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 6.25;
+                geom.odd_xOff = 6.25;
+                geom.horzPitch = 3;
+                geom.vertPitch = 3;
+                geom.rowsPerShank = 384;
+                geom.elecPerShank = 384;
+            case 'NP1122'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 12.5;
+                geom.odd_xOff = 12.5;
+                geom.horzPitch = 3;
+                geom.vertPitch = 3;
+                geom.rowsPerShank = 24;
+                geom.elecPerShank = 384;
+            case 'NP1123'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 10.25;
+                geom.odd_xOff = 10.25;
+                geom.horzPitch = 4.5;
+                geom.vertPitch = 4.5;
+                geom.rowsPerShank = 32;
+                geom.elecPerShank = 384;
+            case 'NP1300'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 11;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 48;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 480;
+                geom.elecPerShank = 960;
+            case 'NP1200'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 27;
+                geom.odd_xOff = 11;
+                geom.horzPitch = 32;
+                geom.vertPitch = 20;
+                geom.rowsPerShank = 64;
+                geom.elecPerShank = 128;
+            case 'NXT3000'
+                geom.nShank = 1;
+                geom.shankWidth = 70;
+                geom.shankPitch = 0;
+                geom.even_xOff = 53;
+                geom.odd_xOff = 53;
+                geom.horzPitch = 0;
+                geom.vertPitch = 15;
+                geom.rowsPerShank = 128;
+                geom.elecPerShank = 128;
+            otherwise
+                % shouldn't see this case
+                fprintf('unsupported probe part number\n');
+                return;
+        end
+    end %end  getGeomParam
+
+    function M = makeTypeMap()
+        % many part numbers have the same geometry parameters ;
+        % make a map that pairs geometry type (value) with probe part number (key)
+        M = containers.Map('KeyType','char','ValueType','char');
+
+        M('3A') = 'np1_stag_70um';
+        M('PRB_1_4_0480_1') = 'np1_stag_70um';
+        M('PRB_1_4_0480_1_C') = 'np1_stag_70um';
+        M('NP1010') = 'np1_stag_70um';
+        M('NP1011') = 'np1_stag_70um';
+        M('NP1012') = 'np1_stag_70um';
+        M('NP1013') = 'np1_stag_70um';
+
+        M('NP1015') = 'nhp_lin_70um';
+        M('NP1015') = 'nhp_lin_70um';
+        M('NP1016') = 'nhp_lin_70um';
+        M('NP1017') = 'nhp_lin_70um';
+
+        M('NP1020') = 'nhp_stag_125um_med';
+        M('NP1021') = 'nhp_stag_125um_med';
+        M('NP1030') = 'nhp_stag_125um_long';
+        M('NP1031') = 'nhp_stag_125um_long';
+
+        M('NP1022') = 'nhp_lin_125um_med';
+        M('NP1032') = 'nhp_lin_125um_long';
+
+        M('NP1100') = 'uhd_8col_1bank';
+        M('NP1110') = 'uhd_8col_16bank';
+
+        M('PRB2_1_2_0640_0') = 'np2_ss';
+        M('PRB2_1_4_0480_1') = 'np2_ss';
+        M('NP2000') = 'np2_ss';
+        M('NP2003') = 'np2_ss';
+        M('NP2004') = 'np2_ss';
+
+        M('PRB2_4_2_0640_0') = 'np2_4s';
+        M('PRB2_4_4_0480_1') = 'np2_4s';
+        M('NP2010') = 'np2_4s';
+        M('NP2013') = 'np2_4s';
+        M('NP2014') = 'np2_4s';
+
+        M('NP1120') = 'NP1120';
+        M('NP1121') = 'NP1121';
+        M('NP1122') = 'NP1122';
+        M('NP1123') = 'NP1123';
+        M('NP1300') = 'NP1300';
+
+        M('NP1200') = 'NP1200';
+        M('NXT3000') = 'NXT3000';
+    end % makeTypeMap
+
+  
 
 end % ReadMeta
