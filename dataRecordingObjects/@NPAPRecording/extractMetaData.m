@@ -213,7 +213,7 @@ end
         else
             probeType = 0;
         end
-        if (probeType == 21) || (probeType == 24)
+        if (probeType == 21) || (probeType == 24) || (probeType == 2013)
             [AP,LF,~] = ChannelCountsIM(meta);
             % NP 2.0; APgain = 80 for all channels
             APgain = zeros(AP,1,'double');
@@ -269,8 +269,17 @@ end
     obj.MicrovoltsPerAD = repmat(Int2Volts(metaAP)/APgain,1,length(chans));
 
     %15.2 MicrovoltsPerADimec % the digital to analog conversion value LF
-    LFgain= LFgain(1);
-    obj.MicrovoltsPerAD_LF = repmat(Int2Volts(metaAP)/LFgain,1,length(chans));
+    if isfield(metaAP,'imDatPrb_type')
+        probeType = str2num(metaAP.imDatPrb_type);
+    else
+        probeType = 0;
+    end
+    if (probeType == 21) || (probeType == 24) || (probeType == 2013)
+        obj.MicrovoltsPerAD_LF=0;
+    else
+        LFgain= LFgain(1);
+        obj.MicrovoltsPerAD_LF = repmat(Int2Volts(metaAP)/LFgain,1,length(chans));
+    end
 
     %Functions required to get gain from dinaq channels
         % =========================================================
