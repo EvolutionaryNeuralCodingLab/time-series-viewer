@@ -128,11 +128,11 @@ classdef NPAPRecording < dataRecording
                 obj=extractMetaData(obj);%file identifiers are aquired inside function
             end
             
-            %load layout
-            obj=obj.loadChLayout;
-            if isempty(obj.chLayoutNumbers)
-                disp('No layout file in directory, to add layout please add a *.chMap file to the data directory with the layout name');
-            end
+%             %load layout
+%             obj=obj.loadChLayout;
+%             if isempty(obj.chLayoutNumbers)
+%                 disp('No layout file in directory, to add layout please add a *.chMap file to the data directory with the layout name');
+%             end
             
         end
         
