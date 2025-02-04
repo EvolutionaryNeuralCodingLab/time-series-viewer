@@ -6,6 +6,7 @@ function obj=extractMetaData(obj)
     %Function to get NP metadata
     path_r = obj.recordingDir;
 
+
     function [meta] = ReadMetaNP(binName, path_r)
 
         % Create the matching metafile name
@@ -160,9 +161,15 @@ end
 
     obj.chLayoutNames = (mat2cell(chans,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
     
+    if isfield(meta,'imDatPrb_type')
+        probeType = str2num(meta.imDatPrb_type);
+    else
+        probeType = 0;
+    end
+
 
     %14. layoutName %the name of the channel layout (electrode type)
-    if f (probeType == 21) || (probeType == 24) || (probeType == 2013)
+    if (probeType == 21) || (probeType == 24) || (probeType == 2013)
          obj.layoutName = 'NP 2.0 four shanks';
     else
         obj.layoutName = 'NP 1.0 staggered-3B1';
