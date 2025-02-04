@@ -1050,7 +1050,7 @@ classdef (Abstract) dataRecording < handle
                 fprintf('Could not find %s!\n, check that electrode name was entered correctly or run without an electrode name and choose from the list.\n',fullFile);
             end
         end
-        
+
         function convert2Binary(obj,targetFileBase,varargin)
             %Converts recording data to a simple binary format. 
 
@@ -1066,7 +1066,9 @@ classdef (Abstract) dataRecording < handle
             addParameter(parseObj,'overwriteBinaryData',0,@isnumeric); %if true overwrites data even if files exist
             addParameter(parseObj,'overwriteTriggerData',0,@isnumeric); %if true overwrites triggers even if files exist
             addParameter(parseObj,'chunkSize',2*60*1000,@isnumeric); %msec
+            addParameter(parseObj,'downSample2LFP',0,@isnumeric); %if true downsamples by a factor of 250 to get LFP in 20KHz sampled signals
             addParameter(parseObj,'medianFilterGroup',[],@iscell);% {1 X N} - cell array of groups of electrode channel numbers for calculating joint median (if empty, does not filter)
+            
             addParameter(parseObj,'inputParams',0,@isnumeric);
             parseObj.parse(targetFileBase,varargin{:});
             if parseObj.Results.inputParams %if true, plots all possible input params to the function
@@ -1198,6 +1200,16 @@ classdef (Abstract) dataRecording < handle
                 [~,pGroup{i}]=intersect(electrodeCh,par.medianFilterGroup{i});
             end
 
+            if par.downSample2LFP
+                %Creates decimation filter
+                F=filterData(obj.samplingFrequency);
+                F.downSamplingFactor=obj.samplingFrequency/250;
+                F=F.designDownSample;
+                F.padding=true;
+                outSamplingFrequency=F.filteredSamplingFrequency;
+            else
+                outSamplingFrequency=obj.samplingFrequency(1);
+            end
             %start extracting data
             tic;
 
@@ -1284,6 +1296,9 @@ classdef (Abstract) dataRecording < handle
                             end
                         end
                         pause(0.0001);
+                        if par.downSample2LFP
+                            data=int16(shiftdim(F.getFilteredData(double(shiftdim(data,-1))),1));
+                        end
                         fwrite(fid, data, ['*' par.targetDataType]);
                         if nAnalog>0
                             fwrite(fidA, dataAnalog, ['*' par.targetDataType]);
@@ -1358,7 +1373,7 @@ classdef (Abstract) dataRecording < handle
             if ~exist(metaDataFile,'file')
                 fidM=fopen(metaDataFile,'w');
                 fprintf(fidM,'nSavedChans = %d\n',numel(electrodeCh));
-                fprintf(fidM,'sRateHz = %.12f\n',obj.samplingFrequency(1));
+                fprintf(fidM,'sRateHz = %.12f\n',outSamplingFrequency);
                 fprintf(fidM,'nChans = %d\n',numel(electrodeCh));
                 outputstr = ['%d' repmat(',%d', 1, numel(par.newElectrodeChNumbers)-1)]; % replicate it to match the number of columns
                 fprintf(fidM,['channelNumbers = ', outputstr, '\n'], par.newElectrodeChNumbers);
