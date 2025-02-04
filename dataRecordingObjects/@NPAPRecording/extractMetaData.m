@@ -154,6 +154,20 @@ end
     obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end-1)',ones(1,numel(chans1(1:end-1)))),'UniformOutput',0);
     %chans1names(9) = "XD0";
 
+    %13.0 
+    
+    obj.chLayoutNumbers = metaAP.snsChanMap; %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
+
+    obj.chLayoutNames = (mat2cell(chans,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
+    
+
+    %14. layoutName %the name of the channel layout (electrode type)
+    if f (probeType == 21) || (probeType == 24) || (probeType == 2013)
+         obj.layoutName = 'NP 2.0 four shanks';
+    else
+        obj.layoutName = 'NP 1.0 staggered-3B1';
+    end
+
     %13. ChannelMap
 
     if isfield(metaAP,'snsGeomMap')
@@ -213,7 +227,7 @@ end
         else
             probeType = 0;
         end
-        if (probeType == 21) || (probeType == 24) || (probeType == 2013)
+        if (probeType == 21) || (probeType == 24) || (probeType == 2013) %%2.0 probe types
             [AP,LF,~] = ChannelCountsIM(meta);
             % NP 2.0; APgain = 80 for all channels
             APgain = zeros(AP,1,'double');
