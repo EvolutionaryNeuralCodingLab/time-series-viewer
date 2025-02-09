@@ -253,7 +253,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         else
             probeType = 0;
         end
-        if (probeType == 21) || (probeType == 24) ||  (probeType == 2013)
+        if (probeType == 21) || (probeType == 24)
             [AP,LF,~] = ChannelCountsIM(meta);
             % NP 2.0; APgain = 80 for all channels
             APgain = zeros(AP,1,'double');
