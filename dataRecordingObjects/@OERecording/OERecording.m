@@ -386,10 +386,11 @@ classdef OERecording < dataRecording
                     
                     xmlData.chTypeName=cellfun(@(x) split(x,'_'),xmlData.channelNamesAll,'UniformOutput',0);
                     xmlData.chTypeName=cellfun(@(x) x(end),xmlData.chTypeName);
-
+                    
+                    xmlData.channelNames=cellfun(@(x) char(x),xmlData.channelNamesAll,'UniformOutput',0);
                     xmlData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+','match')),xmlData.chTypeName);
-                    xmlData.pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',1));
-                    xmlData.pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',1));
+                    xmlData.pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',0));
+                    xmlData.pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',0));
                     obj.eventFileName=convertStringsToChars(obj.openEphyXMLStructureData.RECORDING.STREAM.EVENTS.filenameAttribute);
                 else
                     %get channel information from settings files - including channel numbers - these may be in different order than the recorded files.
@@ -425,8 +426,8 @@ classdef OERecording < dataRecording
                 fprintf('settings.xml file not found! Extracting infor from coninuous recording files.\n');
             end
 
-            fileData.type=cellfun(@(x) regexp(x,'[A-Z]+','match'),fileData.channelName);
-            fileData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+','match')),fileData.channelName);
+            fileData.type=cellfun(@(x) regexp(x,'\S+','match'),fileData.channelName);
+            fileData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+$','match')),fileData.channelName);
 
             pAnalogCh=find(cellfun(@(x) x(1)=="A",fileData.type));
             [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
