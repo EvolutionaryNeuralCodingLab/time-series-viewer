@@ -695,7 +695,25 @@ classdef (Abstract) dataRecording < handle
             param = bc.qm.qualityParamValues(ephysMetaDir, ephysRawFile, ephysKilosortPath, gain_to_uV, kilosortVersion);
 
             %%%%Specific paremeters to tweek for lizards:
-            param.maxWvBaselineFraction = 0.4; %default value = 0.3
+            param.maxWvBaselineFraction = 0.5; %default value = 0.3
+
+            param.computeTimeChunks = 0; %default = 0
+
+            param.deltaTimeChunk = 20*60; %default = 360
+
+            param.maxPercSpikesMissing = 20;%default = 20
+
+            param.tauR_valuesMin = 0.001;%default = 0.002
+
+            param.tauR_valuesMax = 0.003;%default = 0.002
+
+            param.hillOrLlobetMethod =1;%default = 1
+
+            param.maxDrift = 200;%default = 100
+
+            param.minPresenceRatio = 0.5;%default = 0.7
+
+            param.minAmplitude = 20;%default = 20
 
             %param.nChannels must correspond to the total number of channels in your raw data, including any sync channels. 
             % For Neuropixels probes, this value should typically be either 384 or 385 channels. 

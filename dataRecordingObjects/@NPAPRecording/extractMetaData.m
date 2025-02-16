@@ -152,7 +152,7 @@ end
 
     %12. analogChannelNames % (1xN) the numbers of channels containing non-electrode analog inputs
     
-    obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end-1)',ones(1,numel(chans1(1:end-1)))),'UniformOutput',0);
+    obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end)',ones(1,numel(chans1(1:end)))),'UniformOutput',0);
     %chans1names(9) = "XD0";
 
     %13.0 
