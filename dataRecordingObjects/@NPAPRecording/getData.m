@@ -19,6 +19,9 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
     path = obj.recordingDir;
     
     meta = ReadMeta(binName, path);
+
+
+    %meta = extractMetaData(obj);
     
     
     chanList = channels;
@@ -244,41 +247,41 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
 % =========================================================
 % Return gain arrays for imec channels.
 %
-% Index into these with original (acquired) channel IDs.
-%
-    function [APgain,LFgain] = ChanGainsIM(meta)
-
-        if isfield(meta,'imDatPrb_type')
-            probeType = str2num(meta.imDatPrb_type);
-        else
-            probeType = 0;
-        end
-        if (probeType == 21) || (probeType == 24)
-            [AP,LF,~] = ChannelCountsIM(meta);
-            % NP 2.0; APgain = 80 for all channels
-            APgain = zeros(AP,1,'double');
-            APgain = APgain + 80;
-            % No LF channels, set gain = 0
-            LFgain = zeros(LF,1,'double');
-        else
-            % 3A or 3B data?
-            % 3A metadata has field "typeEnabled" which was replaced
-            % with "typeImEnabled" and "typeNiEnabled" in 3B.
-            % The 3B imro table has an additional field for the
-            % high pass filter enabled/disabled
-            if isfield(meta,'typeEnabled')
-                % 3A data
-                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d', ...
-                    'EndOfLine', ')', 'HeaderLines', 1 );
-            else
-                % 3B data
-                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d %*s', ...
-                    'EndOfLine', ')', 'HeaderLines', 1 );
-            end
-            APgain = double(cell2mat(C(1)));
-            LFgain = double(cell2mat(C(2)));
-        end
-    end % ChanGainsIM
+% % Index into these with original (acquired) channel IDs.
+% %
+%     function [APgain,LFgain] = ChanGainsIM(meta)
+% 
+%         if isfield(meta,'imDatPrb_type')
+%             probeType = str2num(meta.imDatPrb_type);
+%         else
+%             probeType = 0;
+%         end
+%         if (probeType == 21) || (probeType == 24)
+%             [AP,LF,~] = ChannelCountsIM(meta);
+%             % NP 2.0; APgain = 80 for all channels
+%             APgain = zeros(AP,1,'double');
+%             APgain = APgain + 80;
+%             % No LF channels, set gain = 0
+%             LFgain = zeros(LF,1,'double');
+%         else
+%             % 3A or 3B data?
+%             % 3A metadata has field "typeEnabled" which was replaced
+%             % with "typeImEnabled" and "typeNiEnabled" in 3B.
+%             % The 3B imro table has an additional field for the
+%             % high pass filter enabled/disabled
+%             if isfield(meta,'typeEnabled')
+%                 % 3A data
+%                 C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d', ...
+%                     'EndOfLine', ')', 'HeaderLines', 1 );
+%             else
+%                 % 3B data
+%                 C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d %*s', ...
+%                     'EndOfLine', ')', 'HeaderLines', 1 );
+%             end
+%             APgain = double(cell2mat(C(1)));
+%             LFgain = double(cell2mat(C(2)));
+%         end
+%     end % ChanGainsIM
 
 
 
@@ -318,6 +321,41 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         end
     end
 
+ function [APgain,LFgain] = ChanGainsIM(meta)
+
+        if isfield(meta,'imDatPrb_type')
+            probeType = str2num(meta.imDatPrb_type);
+        else
+            probeType = 0;
+        end
+        if (probeType == 21) || (probeType == 24) || (probeType == 2013) %%2.0 probe types
+            [AP,LF,~] = ChannelCountsIM(meta);
+            % NP 2.0; APgain = 80 for all channels
+            APgain = zeros(AP,1,'double');
+            APgain = APgain + 80;
+            % No LF channels, set gain = 0
+            LFgain = zeros(LF,1,'double');
+
+
+        else
+            % 3A or 3B data?
+            % 3A metadata has field "typeEnabled" which was replaced
+            % with "typeImEnabled" and "typeNiEnabled" in 3B.
+            % The 3B imro table has an additional field for the
+            % high pass filter enabled/disabled
+            if isfield(meta,'typeEnabled')
+                % 3A data
+                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d', ...
+                    'EndOfLine', ')', 'HeaderLines', 1 );
+            else
+                % 3B data
+                C = textscan(meta.imroTbl, '(%*s %*s %*s %d %d %*s', ...
+                    'EndOfLine', ')', 'HeaderLines', 1 );
+            end
+            APgain = double(cell2mat(C(1)));
+            LFgain = double(cell2mat(C(2)));
+        end
+    end % ChanGainsIM
     
 end % ReadBin
 
