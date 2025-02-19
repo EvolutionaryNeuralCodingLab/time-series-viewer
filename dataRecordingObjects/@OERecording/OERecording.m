@@ -563,7 +563,7 @@ classdef OERecording < dataRecording
             obj.globalStartTime_ms=obj.allTimeStamps(1);
             obj.allTimeStamps = obj.allTimeStamps-obj.globalStartTime_ms; %time stamp vector must be a column vector!!!
             obj.recordingDuration_ms=obj.allTimeStamps(end);
-            if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), disp('Error!!! Some blocks are missing in recording'),end;
+            if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), fprintf(2,'\nError!!! Some blocks are missing in recording!!!\n'),end;
             
             %check that all records have 1024 samples (data integrity check)
             fprintf('\nChecking integrity of all records in ch1...');
