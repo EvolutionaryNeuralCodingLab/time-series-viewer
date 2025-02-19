@@ -723,7 +723,7 @@ classdef (Abstract) dataRecording < handle
 
         end
 
-        function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart)
+        function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart,BombCelled)
             spkData=[];
             if nargin==1
                 pathToPhyResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
@@ -751,6 +751,10 @@ classdef (Abstract) dataRecording < handle
                     return;
                 end
             end
+
+            if nargin <3
+                BombCelled = 0;
+            end
             
             readNPYPath=which('readNPY.m');
             if isempty(readNPYPath)
@@ -774,7 +778,12 @@ classdef (Abstract) dataRecording < handle
             spike_times = readNPY([pathToPhyResults filesep 'spike_times.npy']);
             %labelKS = clusterTable.KSLabel;
             clusterGroup=readtable([pathToPhyResults filesep 'cluster_group.tsv'],'FileType','delimitedtext');
-            label = clusterTable.group;
+            
+            if BombCelled
+                label = clusterTable.bc_unitType;
+            else
+                label = clusterTable.group;
+            end
             nSpks=clusterTable.n_spikes;
             neuronAmp=clusterTable.amp;
             %spikeShapes=readNPY([pathToPhyResults filesep 'templates.npy']); %check if this needs to be sorted
@@ -812,7 +821,13 @@ classdef (Abstract) dataRecording < handle
             fprintf('Saving results to %s\n',saveFileValid);
             save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
 
-            pValid=strcmp(label,'good')|strcmp(label,'mua');
+            if BombCelled
+                pValid=strcmp(label,'GOOD')|strcmp(label,'MUA')|strcmp(label,'NON-SOMA');
+
+            else
+                pValid=strcmp(label,'good')|strcmp(label,'mua');
+
+            end
             label=label(pValid);
             neuronAmp=neuronAmp(pValid);
             nSpks=nSpks(pValid);
