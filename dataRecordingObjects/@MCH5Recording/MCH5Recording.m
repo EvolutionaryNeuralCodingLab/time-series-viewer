@@ -668,6 +668,7 @@ classdef MCH5Recording < dataRecording
             obj.exponentAnalog=double(obj.auxInfoChannel.Exponent(1));
             obj.MicrovoltsPerADAnalog=double(obj.auxInfoChannel.ConversionFactor)*(10^(double(obj.exponentAnalog)+6)); %exponent brings value in V, we want uV;
             obj.analogChannelNumbers=1:length(obj.MicrovoltsPerADAnalog);
+            obj.analogChannelNames=obj.auxInfoChannel.Label;
         end
         %get meta data for digital stream
         if isempty(obj.digitalStreamNum)
