@@ -697,23 +697,32 @@ classdef (Abstract) dataRecording < handle
             %%%%Specific paremeters to tweek for lizards:
             param.maxWvBaselineFraction = 0.5; %default value = 0.3
 
-            param.computeTimeChunks = 0; %default = 0
+            param.computeTimeChunks = 1; %default = 0
 
             param.deltaTimeChunk = 20*60; %default = 360
 
-            param.maxPercSpikesMissing = 20;%default = 20
+            param.maxPercSpikesMissing = 30;%default = 20
 
-            param.tauR_valuesMin = 0.001;%default = 0.002
+            param.tauR_valuesMin = 0.002;%default = 0.002
 
-            param.tauR_valuesMax = 0.003;%default = 0.002
+            param.tauR_valuesMax = 0.002;%default = 0.002
 
             param.hillOrLlobetMethod =1;%default = 1
 
             param.maxDrift = 200;%default = 100
 
-            param.minPresenceRatio = 0.5;%default = 0.7
+            param.minPresenceRatio = 0.15;%default = 0.7
+
+            param.removeDuplicateSpikes = 1; %default = 0;
 
             param.minAmplitude = 20;%default = 20
+
+            param.splitGoodAndMua_NonSomatic = 0; %default = 0; %%%Not working, raise issue
+
+            param.minNumSpikes = 200; %default = 300
+
+            param.maxRPVviolations = 0.3; %fraction, default = 0.1 %%Weirdly, the refractory period violations are not reflected in the autocorrelation. How is it calculated?
+
 
             %param.nChannels must correspond to the total number of channels in your raw data, including any sync channels. 
             % For Neuropixels probes, this value should typically be either 384 or 385 channels. 
