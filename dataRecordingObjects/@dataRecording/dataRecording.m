@@ -909,7 +909,9 @@ classdef (Abstract) dataRecording < handle
             clusterGroup=readtable([pathToPhyResults filesep 'cluster_group.tsv'],'FileType','delimitedtext');
             
             if BombCelled
-                label = clusterTable.bc_unitType;
+                Tbomb = readtable([pathToPhyResults filesep 'cluster_bc_unitType.tsv'], 'FileType', 'text', 'Delimiter', '\t');
+                labelB = clusterTable.bc_unitType;
+                label = cellfun(@lower, labelB, 'UniformOutput', false);
             else
                 label = clusterTable.group;
             end
@@ -950,13 +952,13 @@ classdef (Abstract) dataRecording < handle
             fprintf('Saving results to %s\n',saveFileValid);
             save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
 
-            if BombCelled
-                pValid=strcmp(label,'GOOD')|strcmp(label,'MUA')|strcmp(label,'NON-SOMA');
-
-            else
+%             if BombCelled
+%                 pValid=strcmp(label,'GOOD')|strcmp(label,'MUA')|strcmp(label,'NON-SOMA');
+% 
+%             else
                 pValid=strcmp(label,'good')|strcmp(label,'mua');
 
-            end
+%             end
             label=label(pValid);
             neuronAmp=neuronAmp(pValid);
             nSpks=nSpks(pValid);
