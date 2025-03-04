@@ -645,15 +645,21 @@ classdef (Abstract) dataRecording < handle
             end
         end
 
-        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,GUIbc,rerun)%GUIbc,rerun)
+        function [qMetric,unitType] = getBombCell(obj,pathToKSresults,GUIbc,kilosortVersion,rerun)%GUIbc,rerun)
 
             if nargin <3 
                 GUIbc = 0;
             end
 
             if nargin <4 
+                kilosortVersion = 0;
+            end
+
+            if nargin <5
                 rerun = 0;
             end
+
+
 
             %%%%%Set paths
 
@@ -674,7 +680,7 @@ classdef (Abstract) dataRecording < handle
             ephysRawFile = dir(fullfile(pathToKSresults,APbin)); % path to yourraw .bin or .dat data
             ephysMetaDir = dir(fullfile(pathToKSresults,METAbin)); % path to your .meta or .oebin meta file
 
-            kilosortVersion = 4; % if using kilosort4, you need to have this value kilosertVersion=4. Otherwise it does not matter.
+            %kilosortVersion = 4; % if using kilosort4, you need to have this value kilosertVersion=4. Otherwise it does not matter.
             gain_to_uV = NaN; % use this if you are not using spikeGLX or openEphys to record your data. this value,
             % when mulitplied by your raw data should convert it to  microvolts.
 
@@ -692,7 +698,11 @@ classdef (Abstract) dataRecording < handle
             % This function loads default, permissive values. 
             % It's highly recommended for you to iteratively tweak these values to find values that suit your particular use case!
 
-            param = bc.qm.qualityParamValues(ephysMetaDir, ephysRawFile, ephysKilosortPath, gain_to_uV, kilosortVersion);
+            if kilosortVersion == 4
+                param = bc.qm.qualityParamValues(ephysMetaDir, ephysRawFile, ephysKilosortPath, gain_to_uV, kilosortVersion);
+            else
+                param = bc.qm.qualityParamValues(ephysMetaDir, ephysRawFile, ephysKilosortPath, gain_to_uV);
+            end
 
             %%%%Specific paremeters to tweek for lizards:
             param.maxWvBaselineFraction = 0.5; %default value = 0.3
