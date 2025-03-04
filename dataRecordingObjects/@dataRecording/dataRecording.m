@@ -949,21 +949,19 @@ classdef (Abstract) dataRecording < handle
             if min(ic(1,:))==0
                 ic(1,:)=ic(1,:)+1;
             end
+            %Adding phy_ID variable 
+            phy_ID = clusterTable.cluster_id;   
             fprintf('Saving results to %s\n',saveFileValid);
-            save(saveFileAll,'t','ic','label','neuronAmp','nSpks'); %save full spikes including noise
+            save(saveFileAll,'t','ic','label','neuronAmp','nSpks','phy_ID'); %save full spikes including noise
 
-%             if BombCelled
-%                 pValid=strcmp(label,'GOOD')|strcmp(label,'MUA')|strcmp(label,'NON-SOMA');
-% 
-%             else
-                pValid=strcmp(label,'good')|strcmp(label,'mua');
+            pValid=strcmp(label,'good')|strcmp(label,'mua');
 
-%             end
             label=label(pValid);
             neuronAmp=neuronAmp(pValid);
+            phy_ID =phy_ID(pValid);
             nSpks=nSpks(pValid);
             [t,ic]=RemainNeurons(t,ic,ic(1:2,pValid));
-            save(saveFileValid,'t','ic','label','neuronAmp','nSpks');
+            save(saveFileValid,'t','ic','label','neuronAmp','nSpks','phy_ID');
             
             if nargout==1 %if output is needed and calculation was needed (no saved file existing).
                 spkData=load(saveFileValid);
