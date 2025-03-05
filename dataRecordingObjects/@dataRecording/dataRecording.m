@@ -920,7 +920,7 @@ classdef (Abstract) dataRecording < handle
             
             if BombCelled
                 Tbomb = readtable([pathToPhyResults filesep 'cluster_bc_unitType.tsv'], 'FileType', 'text', 'Delimiter', '\t');
-                labelB = clusterTable.bc_unitType;
+                labelB = Tbomb.bc_unitType;
                 label = cellfun(@lower, labelB, 'UniformOutput', false);
             else
                 label = clusterTable.group;
