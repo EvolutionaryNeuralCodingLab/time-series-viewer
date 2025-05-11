@@ -35,7 +35,7 @@ function [V_uV,t_ms]=getData(obj,channels,startTime_ms,window_ms)
         t0= startTime_ms(trials)/1000;
         samp0 = round(t0*str2double(meta.imSampRate));
     
-        [dataArray, channels] = ReadBin(samp0, nSamp, meta, binName,channels, path);
+        [dataArray, channels] = ReadBin(samp0, nSamp, meta, binName,chanList, path);
         
         dataArray = dataArray(channels,:);
 

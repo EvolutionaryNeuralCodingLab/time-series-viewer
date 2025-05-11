@@ -705,7 +705,7 @@ classdef (Abstract) dataRecording < handle
             end
 
             %%%%Specific paremeters to tweek for lizards:
-            param.maxWvBaselineFraction = 0.5; %default value = 0.3
+            param.maxWvBaselineFraction = 0.3; %default value = 0.3
 
             param.computeTimeChunks = 1; %default = 0
 
@@ -713,9 +713,9 @@ classdef (Abstract) dataRecording < handle
 
             param.maxPercSpikesMissing = 30;%default = 20
 
-            param.tauR_valuesMin = 0.002;%default = 0.002
+            param.tauR_valuesMin = 0.001;%default = 0.002
 
-            param.tauR_valuesMax = 0.002;%default = 0.002
+            param.tauR_valuesMax = 0.003;%default = 0.002
 
             param.hillOrLlobetMethod =1;%default = 1
 
