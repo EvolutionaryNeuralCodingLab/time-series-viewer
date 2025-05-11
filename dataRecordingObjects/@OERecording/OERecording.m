@@ -296,7 +296,6 @@ classdef OERecording < dataRecording
                 %camTrigs = trig(edges(1)+1:edges(2)+1); % only the triggers between stops.
             elseif length(edges)==1
                 disp('only 1 stop in triggers, check recording integrity.')
-
             end
 
         end
