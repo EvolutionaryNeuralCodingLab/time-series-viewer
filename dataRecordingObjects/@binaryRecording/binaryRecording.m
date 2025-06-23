@@ -202,7 +202,7 @@ classdef binaryRecording < dataRecording
             fullMetaFileName=[obj.recordingDir filesep metaFileName '_meta.txt'];
             if exist(fullMetaFileName,'file')
                 fidMeta=fopen(fullMetaFileName,'r');
-                metaData = textscan(fidMeta,'%s = %s','TextType','string','Delimiter',' = ');  %'Whitespace','',
+                metaData = textscan(fidMeta,'%s=%s','TextType','string','Whitespace','-','Delimiter',' = ');  %'Whitespace','',
                 fclose(fidMeta);
                 try
                     for i=1:size(metaData{1},1)
