@@ -51,8 +51,10 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
     
     
    %digits(6) 
-   t_ms = 0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000;
-   t_ms= round(t_ms*1e6)/1e6;
+   t_ms = (1:numel(A))/NP.samplingFrequencyNI*1000;
+   %Added by Mark 28/6/25 - the code below resulted in size differences between V_uV and t_ms
+   %t_ms = 0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000;
+   %t_ms= round(t_ms*1e6)/1e6;
 
 
     % =========================
