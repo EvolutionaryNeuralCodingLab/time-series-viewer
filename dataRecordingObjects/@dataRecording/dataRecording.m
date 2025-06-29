@@ -47,7 +47,7 @@ classdef (Abstract) dataRecording < handle
     end
     
     properties (Constant, Abstract)
-        defaultLocalDir %Default directory from which search starts
+        %defaultLocalDir %Default directory from which search starts
         signalBits % the quantization of the sampling card
         numberOfCharFromEndToBaseName %the number of characters from the end of the file name to get to the base file name
     end
