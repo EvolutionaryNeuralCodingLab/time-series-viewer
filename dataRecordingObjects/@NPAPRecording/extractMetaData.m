@@ -197,8 +197,14 @@ end
 
     obj.chLayoutPositions = chanPos;
 
+    %Sync channel (bit) NI:
 
- 
+    obj.syncNiChan = metaNI.syncNiChan;
+    
+    %Digital channel NI:
+
+    obj.digChan = metaNI.nSavedChans;
+
 
     % FUNCTIONS TO RETURN CONVERSION FACTORS:
 
