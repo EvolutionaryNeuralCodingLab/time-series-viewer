@@ -38,6 +38,8 @@ classdef NPAPRecording < dataRecording
         MicrovoltsPerAD_LF
         %MicrovoltsPerADAnalog
 %         datatype        % class of data in the recording
+        syncNiChan
+        digChan
         
     end
      

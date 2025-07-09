@@ -199,7 +199,7 @@ end
 
     %Sync channel (bit) NI:
 
-    obj.syncNiChan = metaNI.syncNiChan;
+    obj.syncNiChan = str2double(metaNI.syncNiChan);
     
     %Digital channel NI:
 
