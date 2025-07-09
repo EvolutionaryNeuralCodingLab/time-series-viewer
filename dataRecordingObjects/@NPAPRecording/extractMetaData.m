@@ -203,7 +203,7 @@ end
     
     %Digital channel NI:
 
-    obj.digChan = metaNI.nSavedChans-1;
+    obj.digChan = str2double(metaNI.nSavedChans)-1;
 
 
     % FUNCTIONS TO RETURN CONVERSION FACTORS:
