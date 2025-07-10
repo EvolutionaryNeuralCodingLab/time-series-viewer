@@ -233,7 +233,7 @@ else
     obj.fileSizeBytesLF = 0;
 end
 
-fprintf('\nsaving meta data\n');
+fprintf('saving meta data...\n');
 obj.saveMetaData;
 
 

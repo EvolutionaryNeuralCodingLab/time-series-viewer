@@ -18,24 +18,23 @@ meta = ReadMeta(binName, path);
 
 chanList = channels;
 
-nSamp = round((window_ms/1000)*str2double(meta.niSampRate));
-
 nChan = str2double(meta.nSavedChans);
 
 nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
 
+
+%determine start and end times in analog recording based on electrode recordings using the sync data in syncSignal
+[start_End] = interp1(obj.syncSignalInAnalog'*1000, obj.syncSignalInElectrode'*1000, [startTime_ms; startTime_ms+window_ms], 'linear');
+
+nSamp = round(((start_End(2,1)-start_End(1,1))/1000)*str2double(meta.niSampRate));
 nSamp = min(nSamp, nFileSamp);
 
 
-V_uV = zeros(length(channels),length(startTime_ms),nSamp);
-
-origianlTimeStamps=1:0.05:5000;
-onsetSync = interp1(originSQW'*1000, Neur'*1000, origianlTimeStamps, 'linear');
-
+V_uV = zeros(numel(channels),numel(startTime_ms),nSamp);
 
 for trials = 1:length(startTime_ms)
 
-    t0= startTime_ms(trials)/1000;
+    t0= start_End(1,trials)/1000;
 
     samp0 = round(t0*str2double(meta.niSampRate));
 
