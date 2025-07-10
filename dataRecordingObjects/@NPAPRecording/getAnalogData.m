@@ -29,6 +29,8 @@ nSamp = min(nSamp, nFileSamp);
 
 V_uV = zeros(length(channels),length(startTime_ms),nSamp);
 
+origianlTimeStamps=1:0.05:5000;
+onsetSync = interp1(originSQW'*1000, Neur'*1000, origianlTimeStamps, 'linear');
 
 
 for trials = 1:length(startTime_ms)

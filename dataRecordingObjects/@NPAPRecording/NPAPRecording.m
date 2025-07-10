@@ -37,12 +37,15 @@ classdef NPAPRecording < dataRecording
         %MicrovoltsPerAD % the digital to analog conversion value
         MicrovoltsPerAD_LF
         %MicrovoltsPerADAnalog
-%         datatype        % class of data in the recording
+        %         datatype        % class of data in the recording
         syncNiChan
         digChan
-        
+
+        syncSignalInElectrode %sync signal in electrode (imec)
+        syncSignalInAnalog %sync signal in analog (nidaq)
+
     end
-     
+
     properties (Constant)
         defaultLocalDir = '1' %Default directory from which search starts
         signalBits = 1 % the quantization of the sampling card
