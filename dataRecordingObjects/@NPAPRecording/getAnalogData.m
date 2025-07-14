@@ -7,9 +7,13 @@ function [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
 %Output: V_us - A 3D matrix [nChannels x nTrials x nSamples] with voltage waveforms across specified channels and trials
 %        t_ms - A time vector relative to recording start (t=0 at start)
 
-
+%transpose startTime_ms if it was provided a column vector and not as row vector (to prevent an error further on)
+if size(startTime_ms,1)>1
+    startTime_ms=startTime_ms';
+end
 
 %Implementation:
+% Todo: Place all the opertations below in the class constructor and run only once
 binName = string(obj.dataFileNames(contains(obj.dataFileNames,'nidq')));
 
 path = obj.recordingDir;
@@ -22,10 +26,12 @@ nChan = str2double(meta.nSavedChans);
 
 nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
 
-
+if obj.syncAnalogWithElectrode
 %determine start and end times in analog recording based on electrode recordings using the sync data in syncSignal
-[start_End] = interp1(obj.syncSignalInElectrode'*1000, obj.syncSignalInAnalog'*1000, [startTime_ms; startTime_ms+window_ms], 'linear');
-
+    [start_End] = interp1(obj.syncSignalInElectrode, obj.syncSignalInAnalog, [startTime_ms; startTime_ms+window_ms], 'linear');
+else
+    start_End=[startTime_ms;startTime_ms+window_ms];
+end
 nSamp = round(((start_End(2,1)-start_End(1,1))/1000)*str2double(meta.niSampRate));
 nSamp = min(nSamp, nFileSamp);
 
@@ -37,7 +43,7 @@ for trials = 1:length(startTime_ms)
     t0= start_End(1,trials)/1000;
 
     samp0 = round(t0*str2double(meta.niSampRate));
-
+% Todo: ReadBin reads all the channels - should be modfied to read only the relevant channels (at least in the simple case of 1 channel)
     dataArray = ReadBin(samp0, nSamp, meta, binName, path, obj.convertData2Double);
 
     dataArray = dataArray(chanList,:);
@@ -52,6 +58,7 @@ end
 
 %modify time vector based on the sync signal lag of the first trial
 t_ms = (1:size(V_uV,3))/obj.samplingFrequencyNI*1000*((start_End(2,1)-start_End(1,1))/window_ms);
+
 
 %Added by Mark 28/6/25 - the code below resulted in size differences between V_uV and t_ms
 %t_ms = 0:str2double(meta.niSampRate)/1000:str2double(meta.fileTimeSecs)*1000;

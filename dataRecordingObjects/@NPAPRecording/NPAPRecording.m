@@ -41,6 +41,7 @@ classdef NPAPRecording < dataRecording
         syncNiChan
         digChan
 
+        syncAnalogWithElectrode = true %if true extract analog data synced with electrode data 
         syncSignalInElectrode %sync signal in electrode (imec)
         syncSignalInAnalog %sync signal in analog (nidaq)
 

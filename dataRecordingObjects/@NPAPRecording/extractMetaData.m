@@ -175,8 +175,8 @@ obj.syncNiChan = str2double(metaNI.syncNiChan);
 obj.digChan = str2double(metaNI.nSavedChans)-1;
 
 %calculate time conversion for syncing analog data and electrode data due to differences in sampling rates and drift between both traces [ms]
-obj.syncSignalInElectrode = 1000*readmatrix([obj.recordingDir,filesep,dir(fullfile(obj.recordingDir, '*imec0.ap.xd_384_6_500.txt*')).name]);
-obj.syncSignalInAnalog = 1000*readmatrix([obj.recordingDir,filesep,dir(fullfile(obj.recordingDir, sprintf('*nidq.xd_%d_%d_500.txt*',obj.digChan,obj.syncNiChan))).name]);
+obj.syncSignalInElectrode = 1000*readmatrix([obj.recordingDir,filesep,dir(fullfile(obj.recordingDir, '*imec0.ap.xd_384_6_500.txt*')).name])';
+obj.syncSignalInAnalog = 1000*readmatrix([obj.recordingDir,filesep,dir(fullfile(obj.recordingDir, sprintf('*nidq.xd_%d_%d_500.txt*',obj.digChan,obj.syncNiChan))).name])';
 
 
 [APgain,LFgain] = ChanGainsIM(metaAP);
