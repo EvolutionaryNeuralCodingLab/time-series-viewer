@@ -45,7 +45,7 @@ if obj.plotAnalogChannels && nA>0
     dV=(yl(2)-yl(1))/obj.nCh;
     A=bsxfun(@plus,bsxfun(@minus,double(A),mean(A,2))*obj.analogScaling,(yl(1)-dV*(1:nA))');
     
-    obj.hPlot=[obj.hPlot;plot(obj.hPlotAxis,obj.T,A,'k')];
+    obj.hPlot=[obj.hPlot;plot(obj.hPlotAxis,obj.TA,A,'k')];
     hText=[hText;text(obj.T(end)*0.98*ones(1,nA),A(:,end),obj.analogChannelNames,...
         'Parent',obj.hPlotAxis,'FontSize',6,'FontWeight','Bold','BackgroundColor','w')];
     

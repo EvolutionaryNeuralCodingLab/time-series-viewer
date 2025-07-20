@@ -96,19 +96,26 @@ obj.samplingFrequency = srateAP;
 durMS = 1000*str2double(metaAP.fileTimeSecs);
 obj.recordingDuration_ms = durMS;
 
+%Changed by Mark 20/7/25 to find regular electrode channels and sync channels and separate between them
+tmp = textscan(metaAP.snsChanMap,'(%s','EndOfLine', ')','HeaderLines',1);
+obj.channelNumbers = find(cellfun(@(x) x(1)=='A' & x(2)=='P',tmp{1}))';
+obj.syncChannelNumber = find(cellfun(@(x) x(1)=='S' & x(2)=='Y',tmp{1}))';
 
+%{
 %10. channelNumbers % (1xN) an array with integer channel numbers (>=1 integer)
 if strcmp(metaAP.snsSaveChanSubset, 'all')
-    chans = (1:str2double(metaAP.nSavedChans));
+    chans = APch;
 else
     chans = str2num(metaAP.snsSaveChanSubset);
     chans = chans + 1;
 end
-obj.channelNumbers = 1:numel(chans);
+obj.channelNumbers=1:numel(chans);
+%}
+
 
 %10.0. channelNames % (Cell 1xN) a cell array with the N names of the channels
 
-obj.channelNames= cellfun(@(x) char(string(x)),mat2cell(chans',ones(1,numel(chans))),'UniformOutput',0);
+obj.channelNames= cellfun(@(x) char(string(x)),mat2cell(obj.channelNumbers',ones(1,numel(obj.channelNumbers))),'UniformOutput',0);
 
 %triggerNames %the names of trigger channels (not critical)
 
@@ -130,7 +137,7 @@ obj.analogChannelNames=cellfun(@(x) ['XA' char(string(x))],mat2cell(chans1(1:end
 
 obj.chLayoutNumbers = metaAP.snsChanMap; %(MxN) The layout of the channel numbers in physical space arranged in an M by N grid
 
-obj.chLayoutNames = (mat2cell(chans,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
+obj.chLayoutNames = (mat2cell(obj.channelNumbers,1)); %(Cell MxN)The layout of the channel names in physical space arranged in an M by N grid
 
 if isfield(metaAP,'imDatPrb_type')
     probeType = str2num(metaAP.imDatPrb_type);
@@ -183,7 +190,7 @@ obj.syncSignalInAnalog = 1000*readmatrix([obj.recordingDir,filesep,dir(fullfile(
 APgain= APgain(1); %takes gain of first channel. Asumes all channels have the same gain).
 
 %15. MicrovoltsPerADimec % the digital to analog conversion value AP
-obj.MicrovoltsPerAD = repmat(Int2Volts(metaAP)/APgain,1,length(chans)).*1000000;
+obj.MicrovoltsPerAD = repmat(Int2Volts(metaAP)/APgain,1,length(obj.channelNumbers)).*1000000;
 
 %15.2 MicrovoltsPerADimec % the digital to analog conversion value LF
 if isfield(metaAP,'imDatPrb_type')
@@ -196,7 +203,7 @@ if (probeType == 21) || (probeType == 24) || (probeType == 2013)
     obj.MicrovoltsPerAD_LF=0;
 else
     LFgain= LFgain(1);
-    obj.MicrovoltsPerAD_LF = repmat(Int2Volts(metaAP)/LFgain,1,length(chans)).*1000000;
+    obj.MicrovoltsPerAD_LF = repmat(Int2Volts(metaAP)/LFgain,1,length(obj.channelNumbers)).*1000000;
 end
 
 %16. MicrovoltsPerADnidq % the digital to analog conversion value

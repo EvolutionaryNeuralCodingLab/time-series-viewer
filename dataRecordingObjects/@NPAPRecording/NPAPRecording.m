@@ -40,6 +40,7 @@ classdef NPAPRecording < dataRecording
         %         datatype        % class of data in the recording
         syncNiChan
         digChan
+        syncChannelNumber % the number of the sync channel in electrode data
 
         syncAnalogWithElectrode = true %if true extract analog data synced with electrode data 
         syncSignalInElectrode %sync signal in electrode (imec)
@@ -68,9 +69,18 @@ classdef NPAPRecording < dataRecording
             %Output: V_us - A 3D matrix [nChannels x nTrials x nSamples] with voltage waveforms across specified channels and trials
             %        t_ms - A time vector relative to recording start (t=0 at start)
 
-        [V_uV,t_ms]=getDataLFP(obj,channels,startTime_ms,window_ms)
-        
-        
+            [V_uV,t_ms]=getSyncData(obj,channels,startTime_ms,window_ms)
+            %Extract NP Sync spikeGLX recording data from file to memory
+            %Usage: [V_uV,t_ms]=obj.getSyncData(startTime_ms,window_ms);
+            %Input : channels - [1xN] a vector with channel numbers as appearing in the data folder files
+            %        startTime_ms - a vector [1xN] of start times [ms]. If Inf, returns all time stamps in recording (startTime_ms is not considered)
+            %        window_ms - a scalar [1x1] with the window duration [ms].
+            %Output: V_us - A 3D matrix [nChannels x nTrials x nSamples] with voltage waveforms across specified channels and trials
+            %        t_ms - A time vector relative to recording start (t=0 at start)
+
+            [V_uV,t_ms]=getDataLFP(obj,channels,startTime_ms,window_ms)
+
+
         [V_uV,t_ms]=getAnalogData(obj,channels,startTime_ms,window_ms)
             %Extract Neuralynx recording data from file to memory
             %Usage: [V_uV,t_ms]=obj.getData(channels,startTime_ms,window_ms);

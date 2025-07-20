@@ -26,7 +26,7 @@ else
 end
 if installGUILayoutToolBox
     disp('GUI Layout toolbox is not installed, trying to install uix version 2.3.4...');
-    d=which('GUI Layout Toolbox 2.3.4.mltbx');
+    d=which('GUI Layout Toolbox 2.4.1.mltbx');
     installedToolbox = matlab.addons.toolbox.installToolbox(d,true);
 end
 
@@ -271,11 +271,11 @@ end
         %adjust trigger related features
         set(AVG.hGen.messageBox,'string','Loading triggers','ForegroundColor','r');drawnow;
         
-        if AVG.hTrigger.hGetTrigFromRawFiles.Value
+        %if AVG.hTrigger.hGetTrigFromRawFiles.Value
             AVG.Params.triggers=AVG.recordingObj.getTrigger(); %this is the most time consuming step
-        else
-            AVG.Params.triggers={};
-        end
+        %else
+        %    AVG.Params.triggers={};
+        %end
         
         isTriggerActive=cellfun(@(x) ~isempty(x), AVG.Params.triggers); %empty triggers are automatically set to non-active
         if sum(isTriggerActive)>0
@@ -1174,14 +1174,14 @@ end
     end
 
     function CallbackLoadTriggerData(hObj,Event)
-        if hObj.Value
+        %if hObj.Value
             if ~isempty(AVG.recordingObj)
                 initializeTriggers;
             else
                 hObj.Value=false;
                 msgbox('Can not load triggers since no recording was selected! Select and try again','Attention','error','replace');
             end
-        end
+        %end
     end
 
     function CallbackPlotTriggerData(hObj,Event)
