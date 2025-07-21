@@ -379,8 +379,8 @@ classdef OERecording < dataRecording
                 
                 if obj.openEphyXMLData.INFO.VERSION>"0.6.0"
                     obj.openEphyXMLStructureData = readstruct([obj.recordingDir filesep 'structure.openephys'],'FileType','xml');
-                    xmlData.channelNamesAll={obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.nameAttribute};
-                    xmlData.channelFiles=convertContainedStringsToChars({obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.filenameAttribute});
+                    xmlData.channelNamesAll={obj.openEphyXMLStructureData.RECORDING(1).STREAM.CHANNEL.nameAttribute};
+                    xmlData.channelFiles=convertContainedStringsToChars({obj.openEphyXMLStructureData.RECORDING(1).STREAM.CHANNEL.filenameAttribute});
                     %settingBit2Volt={obj.openEphyXMLStructureData.RECORDING.STREAM.CHANNEL.bitVoltsAttribute};
                     
                     xmlData.chTypeName=cellfun(@(x) split(x,'_'),xmlData.channelNamesAll,'UniformOutput',0);
@@ -390,7 +390,7 @@ classdef OERecording < dataRecording
                     xmlData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+','match')),xmlData.chTypeName);
                     xmlData.pAnalogCh=cellfun(@(x) x(1)=="A",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',0));
                     xmlData.pCh=cellfun(@(x) x(1)=="C",cellfun(@(x) char(x),xmlData.chTypeName,'UniformOutput',0));
-                    obj.eventFileName=convertStringsToChars(obj.openEphyXMLStructureData.RECORDING.STREAM.EVENTS.filenameAttribute);
+                    obj.eventFileName=convertStringsToChars(obj.openEphyXMLStructureData.RECORDING(1).STREAM.EVENTS.filenameAttribute);
                 else
                     %get channel information from settings files - including channel numbers - these may be in different order than the recorded files.
                     xmlData.processorNames={obj.openEphyXMLData.SIGNALCHAIN.PROCESSOR.pluginNameAttribute};
