@@ -422,16 +422,16 @@ classdef OERecording < dataRecording
                     %return;
                 end
             else
-                fprintf('settings.xml file not found! Extracting infor from coninuous recording files.\n');
+                fprintf('settings.xml file not found! Extracting info from coninuous recording files.\n');
             end
 
             fileData.type=cellfun(@(x) regexp(x,'\S+','match'),fileData.channelName);
             fileData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+$','match')),fileData.channelName);
 
-            pAnalogCh=find(cellfun(@(x) x(1)=="A",fileData.type));
+            pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
             [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
 
-            pCh=find(cellfun(@(x) x(1)=="C",fileData.type));
+            pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
             [~,p]=sort(fileData.channelNumbers(pCh));pCh=pCh(p);
 
             %{
@@ -504,7 +504,7 @@ classdef OERecording < dataRecording
             if numel(unique(obj.analogChannelNumbers))~=nAnalogChannels
                 obj.analogChannelNumbers=1:nAnalogChannels;
                 pTmp=1:nAnalogChannels;
-                fprintf('Analog channel numbers contain duplicates! Reordering numbers serially.\n');
+                fprintf('Analog channel numbers contain duplicates!!! Reordering numbers serially.\n');
             else
                 [obj.analogChannelNumbers,pTmp]=sort(obj.analogChannelNumbers);
             end
@@ -561,8 +561,12 @@ classdef OERecording < dataRecording
             obj.allTimeStamps = fread(fid4Tests, obj.nRecordsCont*obj.blkCont(1).Repeat, sprintf('%d*%s', obj.blkCont(1).Repeat,obj.blkCont(1).Types), obj.bytesPerRecCont - obj.blkBytesCont(1), 'l')/obj.samplingFrequency(1)*1000;
             obj.globalStartTime_ms=obj.allTimeStamps(1);
             obj.allTimeStamps = obj.allTimeStamps-obj.globalStartTime_ms; %time stamp vector must be a column vector!!!
+            if obj.allTimeStamps(end)<=obj.allTimeStamps(end-1)
+                obj.allTimeStamps(end)=[];
+                fprintf('Last record has a non-valid stims stamp!!! Removing last data record.\n');
+            end
             obj.recordingDuration_ms=obj.allTimeStamps(end);
-            if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), fprintf(2,'\nError!!! Some blocks are missing in recording!!!\n'),end;
+            if any(diff(obj.allTimeStamps)>obj.dataSamplesPerRecord), fprintf(2,'\nError!!! Some blocks are missing in recording!!!\n'),end
             
             %check that all records have 1024 samples (data integrity check)
             fprintf('\nChecking integrity of all records in ch1...');
