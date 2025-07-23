@@ -15,7 +15,7 @@ elseif obj.nCh>1 && obj.nTrials>1
 end
 
 if obj.refreshPlot %for first appearance when shifts were not chosen
-    verticalShift=max(nanstd(double(obj.M(:)))*5,eps);
+    verticalShift=max(std(double(obj.M(:)),'omitmissing')*5,eps);
     obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
     set(obj.hPlotControls.verticalShiftEdit,'string',num2str(verticalShift));
     obj.plotParams.yl=[obj.plotParams.shifts(end)-1*verticalShift obj.plotParams.shifts(1)+1*verticalShift+eps];

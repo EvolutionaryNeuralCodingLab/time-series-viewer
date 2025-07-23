@@ -23,7 +23,7 @@ for stream = 1:length(binFiles)
 
     binName = string(binFiles(stream));
 
-    meta = ReadMetaNP(binName,path_r);
+    meta = ReadMeta(binName,path_r);
 
     if contains(binName, '.ap.')
         metaAP = meta;

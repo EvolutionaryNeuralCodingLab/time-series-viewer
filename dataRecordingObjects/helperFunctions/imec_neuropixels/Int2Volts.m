@@ -23,3 +23,4 @@ switch meta.typeThis
         fI2V = str2double(meta.obAiRangeMax) / str2double(meta.obMaxInt);
 end
 end % Int2Volts
+

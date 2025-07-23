@@ -44,7 +44,7 @@ for trials = 1:length(startTime_ms)
 
     samp0 = round(t0*str2double(meta.niSampRate));
 % Todo: ReadBin reads all the channels - should be modfied to read only the relevant channels (at least in the simple case of 1 channel)
-    dataArray = ReadBin(samp0, nSamp, meta, binName, path, obj.convertData2Double);
+    dataArray = ReadBin(samp0, nSamp, meta, binName, path);
 
     dataArray = dataArray(chanList,:);
 

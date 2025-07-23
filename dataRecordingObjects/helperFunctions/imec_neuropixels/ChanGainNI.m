@@ -7,12 +7,12 @@
 % Note: there is no matching function for OBX, because
 % the gain is fixed at 1.
 %
-    function gain = ChanGainNI(ichan, savedMN, savedMA, meta)
-        if ichan <= savedMN
-            gain = str2double(meta.niMNGain);
-        elseif ichan <= savedMN + savedMA
-            gain = str2double(meta.niMAGain);
-        else
-            gain = 1;
-        end
-    end % ChanGainNI
+function gain = ChanGainNI(ichan, savedMN, savedMA, meta)
+if ichan <= savedMN
+    gain = str2double(meta.niMNGain);
+elseif ichan <= savedMN + savedMA
+    gain = str2double(meta.niMAGain);
+else
+    gain = 1;
+end
+end % ChanGainNI
