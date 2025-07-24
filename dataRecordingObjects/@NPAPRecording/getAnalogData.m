@@ -28,7 +28,7 @@ nFileSamp = str2double(meta.fileSizeBytes) / (2 * nChan);
 
 if obj.syncAnalogWithElectrode
 %determine start and end times in analog recording based on electrode recordings using the sync data in syncSignal
-    [start_End] = interp1(obj.syncSignalInElectrode, obj.syncSignalInAnalog, [startTime_ms; startTime_ms+window_ms], 'linear');
+    [start_End] = interp1(obj.syncSignalInElectrode, obj.syncSignalInAnalog, [startTime_ms; startTime_ms+window_ms], 'linear','extrap');
 else
     start_End=[startTime_ms;startTime_ms+window_ms];
 end
