@@ -41,8 +41,8 @@ set(obj.hPlotControls.plotPropGrid, 'Widths',-2,'Heights', [30 30 30 30 30 30] )
             M=squeeze(obj.M)';
         end
         M = double(M);
-        minM=nanmin(M,[],2);
-        maxM=nanmax(M,[],2);
+        minM=min(M,[],2,"omitmissing");
+        maxM=max(M,[],2,"omitmissing");
         obj.plotParams.shifts=flipud(cumsum([0;maxM(end:-1:2)-minM(end-1:-1:1)]));
         set(obj.hPlotControls.verticalShiftEdit,'string','no overlap');
         obj.plotParams.yl=[obj.plotParams.shifts(end)+minM(end) obj.plotParams.shifts(1)+maxM(1)];
@@ -64,7 +64,7 @@ set(obj.hPlotControls.plotPropGrid, 'Widths',-2,'Heights', [30 30 30 30 30 30] )
     end
     function CallbackAutoScaleStdYPush(hObj,event)
         M=squeeze(obj.M);
-        verticalShift=nanstd(double(M(:)))*1;
+        verticalShift=std(double(M(:)),'omitmissing')*1;
         set(obj.hPlotControls.verticalShiftEdit,'string',num2str(verticalShift));
         if size(M,2)>1
             obj.plotParams.shifts=((size(M,1)-1):-1:0)'*verticalShift;
