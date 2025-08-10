@@ -352,7 +352,7 @@ classdef OERecording < dataRecording
                 
                 fseek(tmpFid,0,'bof');
                 hdr = fread(tmpFid, obj.headerSizeByte, 'char*1');
-                eval(char(hdr')); %convert to an header structure
+                eval(char(hdr')); %results in an "header" structture
                 
                 fileData.samplingFrequency(i)=header.sampleRate;
                 fileData.MicrovoltsPerAD(i)=header.bitVolts;
@@ -428,10 +428,15 @@ classdef OERecording < dataRecording
             fileData.type=cellfun(@(x) regexp(x,'\S+','match'),fileData.channelName);
             fileData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+$','match')),fileData.channelName);
 
-            pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
-            [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
+            if obj.openEphyXMLStructureData.RECORDING(1).STREAM.source_node_nameAttribute=="XDAQ"
+                pAnalogCh=find(cellfun(@(x) x(1)=="A" || x(1)=="P",fileData.type));
+                pCh=find(cellfun(@(x) x(1)=="C",fileData.type));
+            else
+                pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
+                pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
 
-            pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
+            end
+            [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
             [~,p]=sort(fileData.channelNumbers(pCh));pCh=pCh(p);
 
             %{
