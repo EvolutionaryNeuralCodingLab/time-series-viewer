@@ -265,8 +265,6 @@ classdef OERecording < dataRecording
             end
         end
 
-
-
         function [camTrigs]=getCamerasTrigger(obj, trig_chanel, stop_len)
             %Extract triggers fron event channel, only for the times
             %between 2 triggers stops of above 1 sec.
@@ -277,7 +275,7 @@ classdef OERecording < dataRecording
             % Output:camTrigs= triggers vectoer of times of on triggers, in ms from
             % the recording start time (0).
             if nargin < 3
-                stop_len = 1000; % assuming that in Reptilearn the stop in the triggers are 2000 ms.
+                stop_len = 5000; % assuming that in Reptilearn the stop in the triggers are 2000 ms.
             end
 
             startTime_ms = 0;
@@ -286,17 +284,18 @@ classdef OERecording < dataRecording
 
             edges = find(diff(trig)>stop_len);
             if length(edges) == 2
-                camTrigs = trig(edges(1)+1:edges(2)+1); % only the triggers between stops.
+                camTrigs = trig(edges(1)+1:edges(2)); % only the triggers between stops.
             elseif length(edges) >= 3
                 disp('more than 2 stops in triggers, taking the triggers between the largest gaps.')
 
                 maxD = find(max(diff(edges)));
-                camTrigs = trig(edges(maxD)+1:edges(maxD+1)+1);
+                camTrigs = trig(edges(maxD)+1:edges(maxD+1));
 
                 %camTrigs = trig(edges(1)+1:edges(2)+1); % only the triggers between stops.
             elseif length(edges)==1
                 disp('only 1 stop in triggers, check recording integrity.')
-            end
+            end  
+
 
         end
 
