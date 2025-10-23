@@ -427,13 +427,18 @@ classdef OERecording < dataRecording
             fileData.type=cellfun(@(x) regexp(x,'\S+','match'),fileData.channelName);
             fileData.channelNumbers=cellfun(@(x) str2double(regexp(x,'\d+$','match')),fileData.channelName);
 
-            if obj.openEphyXMLStructureData.RECORDING(1).STREAM.source_node_nameAttribute=="XDAQ"
-                pAnalogCh=find(cellfun(@(x) x(1)=="A" || x(1)=="P",fileData.type));
-                pCh=find(cellfun(@(x) x(1)=="C",fileData.type));
+            %combine the second else in future version
+            if obj.openEphyXMLData.INFO.VERSION>"0.6.0"
+                if obj.openEphyXMLStructureData.RECORDING(1).STREAM.source_node_nameAttribute=="XDAQ"
+                    pAnalogCh=find(cellfun(@(x) x(1)=="A" || x(1)=="P",fileData.type));
+                    pCh=find(cellfun(@(x) x(1)=="C",fileData.type));
+                else
+                    pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
+                    pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
+                end
             else
                 pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
                 pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
-
             end
             [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
             [~,p]=sort(fileData.channelNumbers(pCh));pCh=pCh(p);
