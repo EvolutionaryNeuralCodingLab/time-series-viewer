@@ -437,7 +437,7 @@ classdef OERecording < dataRecording
                     pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
                 end
             else
-                pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="C1_",fileData.type));
+                pAnalogCh=find(cellfun(@(x) x(1:3)=="ADC" || x(1:3)=="AUX" || x(1:3)=="C1_",fileData.type));
                 pCh=find(cellfun(@(x) x(1:2)=="CH",fileData.type));
             end
             [~,p]=sort(fileData.channelNumbers(pAnalogCh));pAnalogCh=pAnalogCh(p);
