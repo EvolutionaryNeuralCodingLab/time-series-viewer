@@ -270,11 +270,11 @@ end
         %adjust trigger related features
         set(AVG.hGen.messageBox,'string','Loading triggers','ForegroundColor','r');drawnow;
         
-        %if AVG.hTrigger.hGetTrigFromRawFiles.Value
+        if AVG.hTrigger.hGetTrigFromRawFiles.Value
             AVG.Params.triggers=AVG.recordingObj.getTrigger(); %this is the most time consuming step
-        %else
-        %    AVG.Params.triggers={};
-        %end
+        else
+            AVG.Params.triggers={};
+        end
         
         isTriggerActive=cellfun(@(x) ~isempty(x), AVG.Params.triggers); %empty triggers are automatically set to non-active
         if sum(isTriggerActive)>0
@@ -1177,14 +1177,14 @@ end
     end
 
     function CallbackLoadTriggerData(hObj,Event)
-        %if hObj.Value
+        if hObj.Value
             if ~isempty(AVG.recordingObj)
                 initializeTriggers;
             else
                 hObj.Value=false;
                 msgbox('Can not load triggers since no recording was selected! Select and try again','Attention','error','replace');
             end
-        %end
+        end
     end
 
     function CallbackPlotTriggerData(hObj,Event)
@@ -1388,45 +1388,46 @@ end
         %% Construct Trigger Box
         AVG.hTrigger.MainVBox=uix.VBox('Parent', AVG.hTrigger.hMainTriggerPanel, 'Padding', 4, 'Spacing', 4);
         
-        AVG.hTrigger.navigationHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
+        AVG.hTrigger.navigationHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
         AVG.hTrigger.hForward=uicontrol('Parent',AVG.hTrigger.navigationHBox,'Callback',{@CallbackTriggerDirectionPush,-1}, 'Style','push', 'String','<<');
         AVG.hTrigger.hNumber=uicontrol('Parent',AVG.hTrigger.navigationHBox,'Callback',@CallbackTriggerNumberEdit, 'Style','edit', 'String','0');
         AVG.hTrigger.hBackward=uicontrol('Parent',AVG.hTrigger.navigationHBox,'Callback',{@CallbackTriggerDirectionPush,1}, 'Style','push', 'String','>>');
         set(AVG.hTrigger.navigationHBox, 'Widths',[-1 40 -1]);
         
-        AVG.hTrigger.hLoadAndPlotTrigHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
-        AVG.hTrigger.hGetTrigFromRawFiles=uicontrol('Parent', AVG.hTrigger.hLoadAndPlotTrigHBox,'Callback',{@CallbackLoadTriggerData}, 'HorizontalAlignment','left','Style','push', 'String','load trig.','value',AVG.Params.loadTriggerDefault,'Tooltip','load triggers from recording file');
+        AVG.hTrigger.hLoadAndPlotTrigHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
+        AVG.hTrigger.hGetTrigFromRawFiles=uicontrol('Parent', AVG.hTrigger.hLoadAndPlotTrigHBox,'Callback',{@CallbackLoadTriggerData}, 'HorizontalAlignment','left','Style','togglebutton', 'String','load trig.','value',AVG.Params.loadTriggerDefault,'Tooltip','load triggers from recording file');
         AVG.hTrigger.hPlotTrigs=uicontrol('Parent', AVG.hTrigger.hLoadAndPlotTrigHBox,'Callback',@CallbackPlotTriggerData, 'HorizontalAlignment','left','Style','check', 'String','plot trig.','value',0,'Tooltip','plot triggers on traces (works only on activity trace plot)');
         
-        AVG.hTrigger.OffsetHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
+        AVG.hTrigger.OffsetHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
         AVG.hTrigger.hOffsetTxt=uicontrol('Parent', AVG.hTrigger.OffsetHBox, 'HorizontalAlignment','left','Style','text', 'String','Offset [ms]');
         AVG.hTrigger.hOffsetEdit=uicontrol('Parent', AVG.hTrigger.OffsetHBox, 'Style','edit', 'String',0,'Callback',@CallbackTrigOffset);
         set(AVG.hTrigger.OffsetHBox, 'Widths',[-1 -2]);
         
-        AVG.hTrigger.selectSubPopulationHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
+        AVG.hTrigger.selectSubPopulationHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
         AVG.hTrigger.selectSubPopPush=uicontrol('Parent', AVG.hTrigger.selectSubPopulationHBox,'String','Add sub. pop.','Callback',@CallbackAddTrigSubPopPush,'HorizontalAlignment','left','Style','push');
         AVG.hTrigger.selectSubPopEdit=uicontrol('Parent', AVG.hTrigger.selectSubPopulationHBox,'Style','edit', 'String','');
         set(AVG.hTrigger.selectSubPopulationHBox, 'Widths',[-1 -1]);
         
-        AVG.hTrigger.manualSetHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
+        AVG.hTrigger.manualSetHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
         AVG.hTrigger.manualSetPush=uicontrol('Parent', AVG.hTrigger.manualSetHBox, 'Style','push', 'String','Add manually','Callback',@CallbackManualSetPush);
         AVG.hTrigger.manualSetEdit=uicontrol('Parent', AVG.hTrigger.manualSetHBox, 'Style','edit', 'String','');
         set(AVG.hTrigger.manualSetHBox, 'Widths',[-1 -2]);
         
-        AVG.hTrigger.manualLoadHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
-        AVG.hTrigger.manualLoadTxtTxt=uicontrol('Parent', AVG.hTrigger.manualLoadHBox, 'HorizontalAlignment','left','Style','text', 'String','Load trigger: ');
+        AVG.hTrigger.manualLoadHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 2);
+        AVG.hTrigger.manualLoadTxtTxt=uicontrol('Parent', AVG.hTrigger.manualLoadHBox, 'HorizontalAlignment','left','Style','text', 'String','Load trig.');
         AVG.hTrigger.manualLoadFile=uicontrol('Parent', AVG.hTrigger.manualLoadHBox,'Style','push','String','file','Callback',@CallbackManualLoadFile,'Tooltip','load triggers from matlab file with a saved cell array');
         AVG.hTrigger.manualLoadVariable=uicontrol('Parent', AVG.hTrigger.manualLoadHBox,'Style','push','String','var','Callback',@CallbackManualLoadVariable,'Tooltip','load triggers from cell array variable on workspace');
         AVG.hTrigger.manualLoadSpikes=uicontrol('Parent', AVG.hTrigger.manualLoadHBox,'Style','push','String','t-ic','Callback',@CallbackManualLoadSpikes,'Tooltip','load triggers spike sorting mat file with t-ic format');
+        set(AVG.hTrigger.manualLoadHBox, 'Widths',[-1.5 -1 -1 -1]);
 
-        AVG.hTrigger.exportTriggerHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 4, 'Spacing', 4);
+        AVG.hTrigger.exportTriggerHBox=uix.HBox('Parent', AVG.hTrigger.MainVBox, 'Padding', 1, 'Spacing', 4);
         AVG.hTrigger.exportSelectedTrigger=uicontrol('Parent', AVG.hTrigger.exportTriggerHBox, 'Style','push', 'String','Export selected trigger','Callback',@CallbackExportSelectedTrigger);
         AVG.hTrigger.sendTriggerToStartTimePush=uicontrol('Parent', AVG.hTrigger.exportTriggerHBox, 'Style','push', 'String','send to start times','Callback',@CallbackSendTriggerToStartTime,'ForegroundColor','r');
         
         AVG.hTrigger.manualLoadFile=uicontrol('Parent',AVG.hTrigger.MainVBox,'Style','push','String','delete trigger','Callback',@CallbackDeleteTrigger);
         
         %delete this handle for terminating the trigger GUI and replacing it with a new one
-        AVG.hTrigger.MainGrid=uix.Grid('Parent',AVG.hTrigger.MainVBox, 'Spacing',4, 'Padding',4);
+        AVG.hTrigger.MainGrid=uix.Grid('Parent',AVG.hTrigger.MainVBox, 'Spacing',4, 'Padding',1);
         
         set(AVG.hTrigger.MainVBox, 'Heights',[50 25 25 25 25 25 50 25 -1]);
         %this line should be after the startTimeEdit uicontrol is defined! 
