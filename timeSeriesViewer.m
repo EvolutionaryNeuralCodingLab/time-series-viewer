@@ -25,8 +25,8 @@ else
     end
 end
 if installGUILayoutToolBox
-    disp('GUI Layout toolbox is not installed, trying to install uix version 2.3.4...');
-    d=which('GUI Layout Toolbox 2.4.1.mltbx');
+    disp('GUI Layout toolbox is not installed, trying to install uix version 2.4.2...');
+    d=which('GUI Layout Toolbox 2.4.2.mltbx');
     installedToolbox = matlab.addons.toolbox.installToolbox(d,true);
 end
 
@@ -156,7 +156,7 @@ end
         %set channel data -- check if this could be removed as in electrode data
         AVG.plotData.channelNumbers=AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces);
         AVG.plotData.channelNames=AVG.Params.channelNames(AVG.Params.activeChannelPlaces);
-        AVG.Params.analogChannelNumbers=AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces);
+        AVG.plotData.analogChannelNumbers=AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces);
         AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces); 
 
         %Update traces for electrode data
@@ -178,8 +178,6 @@ end
 
         %Update traces for analog data
         if AVG.plotData.plotAnalogChannels
-            AVG.plotData.analogChannelNames=AVG.Params.analogChannelNames(AVG.Params.activeAnalogPlaces); %check if this could be removed as in electrode data
-
             if AVG.hAnalysis.hApplyOnAnalog.Tag=="on" % a filter was selected -> data is padded
                 [AVG.plotData.A,AVG.plotData.TA]=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),...
                     AVG.Params.startTime-AVG.Params.filterPadding,AVG.Params.window+2*AVG.Params.filterPadding);
@@ -191,6 +189,7 @@ end
                 AVG.plotData.TA=AVG.plotData.TA(1:end-round(AVG.Params.paddingSamples/AVG.filterObj.downSamplingFactor)*2); %the first time is 0
             else
                 [AVG.plotData.A,AVG.plotData.TA]=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers(AVG.Params.activeAnalogPlaces),AVG.Params.startTime,AVG.Params.window);
+                %[AVG.plotData.A,AVG.plotData.TA]=AVG.recordingObj.getAnalogData(AVG.Params.analogChannelNumbers,AVG.Params.startTime,AVG.Params.window);
                 for i=AVG.Params.selectedAnalysisAnalog %no need to consider a filter only analysis
                     feval(AVG.Params.analysisMethods{i},AVG.plotData);
                 end
@@ -240,7 +239,7 @@ end
         AVG.Params.analogChannelNumbers=AVG.recordingObj.analogChannelNumbers;
         
         AVG.Params.activeChannelPlaces=1:numel(AVG.Params.channelNumbers);
-        AVG.Params.activeAnalogPlaces=true(1,numel(AVG.Params.analogChannelNumbers));
+        AVG.Params.activeAnalogPlaces=1:numel(AVG.Params.analogChannelNumbers);
         
         %adjust start time
         AVG.Params.startTime=AVG.Params.defaultStartTime; %[ms]
@@ -307,7 +306,8 @@ end
             return;
         else
             
-            remoteZipFile = 'http://www.mathworks.com/matlabcentral/mlc-downloads/downloads/submissions/47982/versions/7/download/zip';
+            %remoteZipFile = 'http://www.mathworks.com/matlabcentral/mlc-downloads/downloads/submissions/47982/versions/7/download/zip';
+            remoteZipFile = 'https://www.mathworks.com/matlabcentral/mlc-downloads/downloads/e5af5a78-4a80-11e4-9553-005056977bd0/27611476-c814-450a-b0cb-76c2101f96ed/packages/zip';
             try
                 saveIn=[AVG.Params.timeSeriesViewerMainDir filesep 'GUILayout'];
                 mkdir(saveIn);
@@ -778,9 +778,9 @@ end
                 end
             end
         else
-            AVG.Params.activeAnalogPlaces=AVG.Params.activeAnalogPlaces | ismember(AVG.Params.analogChannelNames,split(inStr,' '));
+            AVG.Params.activeAnalogPlaces=[AVG.Params.activeAnalogPlaces, find(ismember(AVG.Params.analogChannelNames,split(inStr,' ')))];
         end
-        set(hObj,'string','Add channels'); %replace entered channel string with default string
+        set(hObj,'string','Add (# 4 electrode,Name 4 analog)'); %replace entered channel string with default string
         updatePlot;
     end
 
@@ -793,9 +793,9 @@ end
                 AVG.Params.activeChannelPlaces(find(AVG.Params.channelNumbers(AVG.Params.activeChannelPlaces)==ChannelsToRemove(i)))=[];
             end
         else
-            AVG.Params.activeAnalogPlaces(ismember(AVG.Params.analogChannelNames,split(inStr,' ')))=false;
+            AVG.Params.activeAnalogPlaces(find(ismember(AVG.Params.analogChannelNames,split(inStr,' '))))=[];
         end
-        set(hObj,'string','Remove channels');%replace entered channel string with default string
+        set(hObj,'string','Remove (# 4 electrode,Name 4 analog)');%replace entered channel string with default string
         updatePlot;
     end
 
@@ -815,15 +815,18 @@ end
             end
             AVG.Params.activeChannelPlaces=tmpActiveChannels;
         else
-            AVG.Params.activeAnalogPlaces=ismember(AVG.Params.analogChannelNames,split(inStr,' '));
+            AVG.Params.activeAnalogPlaces=find(ismember(AVG.Params.analogChannelNames,split(inStr,' ')));
         end
-        set(hObj,'string','Keep only channels');%replace entered channel string with default string
+        set(hObj,'string','Keep (# 4 electrode,Name 4 analog)');%replace entered channel string with default string
         updatePlot;
     end
 
-    function CallbackChEnableAllChannelsPush(hObj,event)
-        AVG.Params.activeChannelPlaces=1:numel(AVG.Params.channelNumbers);
-        AVG.Params.activeAnalogPlaces=true(1,numel(AVG.Params.analogChannelNumbers));
+    function CallbackChEnableAllChannelsPush(hObj,event,electrodeAnanlogSwitch)
+        if electrodeAnanlogSwitch=="electrode"
+            AVG.Params.activeChannelPlaces=1:numel(AVG.Params.channelNumbers);
+        elseif electrodeAnanlogSwitch=="analog"
+            AVG.Params.activeAnalogPlaces=1:numel(AVG.Params.analogChannelNumbers);
+        end
         updatePlot;
     end
 
@@ -851,7 +854,7 @@ end
             set(AVG.manualChannelSelectionFigure.hCh(AVG.Params.activeChannelPlaces),'value',1);
         end
         for i=1:nActiveAnalogChannels
-            set(AVG.manualChannelSelectionFigure.hCh(nChannels+find(AVG.Params.activeAnalogPlaces)),'value',1);
+            set(AVG.manualChannelSelectionFigure.hCh(nChannels+AVG.Params.activeAnalogPlaces),'value',1);
         end
         set(AVG.manualChannelSelectionFigure.hChannelGrid,'Widths',-1*ones(1,ceil((nActiveChannels+nActiveAnalogChannels)/channelsPerColumn)),'Heights', -1*ones(1,channelsPerColumn));
         set(AVG.manualChannelSelectionFigure.VBox, 'Heights',[-1 30]);
@@ -1243,7 +1246,7 @@ end
         AVG.hMainFigure.hMainWindow = uix.HBox('Parent',AVG.hMainFigure.hFigure, 'Spacing',4);
         AVG.hMainFigure.hLeftBox = uix.VBoxFlex('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
         AVG.hMainFigure.hMidGrid = uix.Grid('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',7);
-        AVG.hMainFigure.hRightBox = uix.VBoxFlex('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',4, 'Padding',4);
+        AVG.hMainFigure.hRightBox = uix.VBoxFlex('Parent',AVG.hMainFigure.hMainWindow, 'Spacing',10, 'Padding',4);
         set(AVG.hMainFigure.hMainWindow, 'Widths',[-2 -8 -2]);
         
         % Set left box
@@ -1310,10 +1313,12 @@ end
         %% Construct channel GUI
         AVG.hCh.mainBox=uix.VBox('Parent', AVG.hCh.ChannelSelectionPanel, 'Padding', 5, 'Spacing', 10);
         
-        AVG.hCh.AddChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChAddChannelsEdit},'Style','edit', 'String','Add channels');
-        AVG.hCh.removeChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChRemoveChannelsEdit}, 'Style','edit', 'String','Remove channels');
-        AVG.hCh.keepOnlyChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChKeepOnlyChannelsEdit}, 'Style','edit', 'String','Keep only channels');
-        AVG.hCh.enableAllChannelsPush=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChEnableAllChannelsPush}, 'Style','push', 'String','Enable all channels');
+        AVG.hCh.AddChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChAddChannelsEdit},'Style','edit', 'String','Add (# 4 electrode,Name 4 analog)');
+        AVG.hCh.removeChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChRemoveChannelsEdit}, 'Style','edit', 'String','Remove (# 4 electrode,Name 4 analog)');
+        AVG.hCh.keepOnlyChannelsEdit=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChKeepOnlyChannelsEdit}, 'Style','edit', 'String','Keep only (# 4 electrode,Name 4 analog)');
+        AVG.hCh.enableAllHBox=uix.HBox('Parent', AVG.hCh.mainBox, 'Padding', 0, 'Spacing', 5);
+        AVG.hCh.enableAllChannelsPush=uicontrol('Parent', AVG.hCh.enableAllHBox, 'Callback',{@CallbackChEnableAllChannelsPush,"electrode"}, 'Style','push', 'String','Reset electrode');
+        AVG.hCh.enableAllChannelsPush=uicontrol('Parent', AVG.hCh.enableAllHBox, 'Callback',{@CallbackChEnableAllChannelsPush,"analog"}, 'Style','push', 'String','Reset analog');
         AVG.hCh.manualChannelSelectPush=uicontrol('Parent', AVG.hCh.mainBox, 'Callback',{@CallbackChManualChannelSelectPush}, 'Style','push', 'String','Select manually');
         
         %AVG.hCh.empty1=uix.Empty('Parent', AVG.hCh.mainBox);

@@ -169,8 +169,11 @@ classdef filterData
             %design downsampling filter
             %Usage: [DS]=DS.designHilbert()
             %Output: DS - the down sampling filter object
-            obj.filterOrder=60;
-            obj.hilbertBand=400;
+            if isempty(obj.hilbertBand)
+                disp('obj.hilbertBand should be defined!')
+                return;
+            end
+            obj.filterOrder=5;
             obj.currentDesignedFilter='hilbert';
             obj.filteredSamplingFrequency=obj.samplingFrequency;
             obj.vars={'N,TW',obj.filterOrder,obj.hilbertBand};
