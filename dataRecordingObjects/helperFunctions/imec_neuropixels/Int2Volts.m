@@ -18,7 +18,11 @@ switch meta.typeThis
         end
         fI2V = str2double(meta.imAiRangeMax) / maxInt;
     case 'nidq'
-        fI2V = str2double(meta.niAiRangeMax) / str2double(meta.niMaxInt);
+        try %in NP1 there is an error
+            fI2V = str2double(meta.niAiRangeMax) / str2double(meta.niMaxInt);
+        catch
+            fI2V =1;
+        end
     case 'obx'
         fI2V = str2double(meta.obAiRangeMax) / str2double(meta.obMaxInt);
 end
