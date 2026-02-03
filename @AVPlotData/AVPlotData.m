@@ -32,6 +32,7 @@ classdef AVPlotData < handle
     properties (SetObservable)
         M=[];                   %activity data [nChannels x nTrials x nSamples]
         channelNumbers=[];      %channel numbers
+        analogChannelNumbers=[];%analog channel numbers
         A=[];                   %analog data [nChannels x nTrials x nSamples]
         trigMarks = [];
     end
