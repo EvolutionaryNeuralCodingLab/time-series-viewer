@@ -648,7 +648,7 @@ classdef (Abstract) dataRecording < handle
         function [qMetric,unitType] = getBombCell(obj,pathToKSresults,GUIbc,kilosortVersion,rerun)%GUIbc,rerun)
 
             if nargin <3 
-                GUIbc = 0;
+                GUIbc = 1;
             end
 
             if nargin <4 
@@ -670,15 +670,30 @@ classdef (Abstract) dataRecording < handle
             ephysKilosortPath = pathToKSresults;
 %             ephysRawFile = dir([pathToKSresults '*ap*.*bin']); % path to your raw .bin or .dat data
 %             ephysMetaDir = dir([pathToKSresults '*ap.meta']); % path to your .meta or .oebin meta file
-            savePath = [pathToKSresults 'qMetrics']; % where you want to save the quality metrics
+            savePath = [char(fileparts(pathToKSresults)) filesep 'qMetrics']; % where you want to save the quality metrics
 
             files = dir(pathToKSresults);
             fileNames = {files.name};
+
+            Rawfiles = files;
+            rawPath= pathToKSresults;
+
             APbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.bin')));
             METAbin = char(fileNames(contains(fileNames,'tcat.imec0.ap.meta')));
+
+            if isempty(APbin) ||   isempty(METAbin)
+                rawPath = fileparts(ephysKilosortPath);
+                Rawfiles = dir(rawPath);
+                RawfileNames = {Rawfiles.name};
+
+
+                APbin = char(RawfileNames(contains(RawfileNames,'tcat.imec0.ap.bin')));
+                METAbin = char(RawfileNames(contains(RawfileNames,'tcat.imec0.ap.meta')));
+
+            end
            
-            ephysRawFile = dir(fullfile(pathToKSresults,APbin)); % path to yourraw .bin or .dat data
-            ephysMetaDir = dir(fullfile(pathToKSresults,METAbin)); % path to your .meta or .oebin meta file
+            ephysRawFile = fullfile(rawPath,APbin); % path to yourraw .bin or .dat data
+            ephysMetaDir = dir(fullfile(rawPath,METAbin)); % path to your .meta or .oebin meta file
 
             %kilosortVersion = 4; % if using kilosort4, you need to have this value kilosertVersion=4. Otherwise it does not matter.
             gain_to_uV = NaN; % use this if you are not using spikeGLX or openEphys to record your data. this value,
@@ -687,6 +702,9 @@ classdef (Abstract) dataRecording < handle
             %%%%Load data
             %This function loads are your ephys data. Use this function rather than any custom one
             %as it handles zero-indexed values in a particular way. 
+
+            ephysKilosortPath = char(ephysKilosortPath); %Convert to char before feeding into bombcell
+            savePath = char(savePath);
 
             [spikeTimes_samples, spikeClusters, templateWaveforms, templateAmplitudes, pcFeatures, ...
                 pcFeatureIdx, channelPositions] = bc.load.loadEphysData(ephysKilosortPath, savePath);
@@ -729,7 +747,7 @@ classdef (Abstract) dataRecording < handle
 
             param.splitGoodAndMua_NonSomatic = 0; %default = 0; %%%Not working, raise issue
 
-            param.minNumSpikes = 200; %default = 300
+            param.minNumSpikes = 100; %default = 300
 
             param.maxRPVviolations = 0.3; %fraction, default = 0.1 %%Weirdly, the refractory period violations are not reflected in the autocorrelation. How is it calculated?
 
@@ -741,13 +759,30 @@ classdef (Abstract) dataRecording < handle
             param.nChannels = 385;
             param.nSyncChannels = 1;
 
+
+
             % if using SpikeGLX, you can use this function:
             if ~isempty(ephysMetaDir)
-                if endsWith(ephysMetaDir.name, '.ap.meta') %spikeGLX file-naming convention
-                    meta = bc.dependencies.SGLX_readMeta.ReadMeta(ephysMetaDir.name, ephysMetaDir.folder);
+
+                % Extract all filenames into a cell array
+                names = {ephysMetaDir.name};
+
+                % Find files that match SpikeGLX naming convention
+                idx = endsWith(names, '.ap.meta');
+
+                if any(idx)
+
+                    % Take the first matching file
+                    metaFile = ephysMetaDir(find(idx,1));
+
+                    meta = bc.dependencies.SGLX_readMeta.ReadMeta( ...
+                        metaFile.name, metaFile.folder);
+
                     [AP, ~, SY] = bc.dependencies.SGLX_readMeta.ChannelCountsIM(meta);
-                    param.nChannels = AP + SY;
+
+                    param.nChannels     = AP + SY;
                     param.nSyncChannels = SY;
+
                 end
             end
 
@@ -862,7 +897,7 @@ classdef (Abstract) dataRecording < handle
 
         end
 
-        function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart,BombCelled)
+        function [spkData]=convertPhySorting2tIc(obj,pathToPhyResults,tStart,BombCelled,rerun)
             spkData=[];
             if nargin==1
                 pathToPhyResults=fullfile(obj.recordingDir,['kiloSortResults_',obj.recordingName]);
@@ -884,8 +919,12 @@ classdef (Abstract) dataRecording < handle
             saveFileAll=[pathToPhyResults filesep 'sorting_tIc_All.mat'];
             saveFileValid=[pathToPhyResults filesep 'sorting_tIc.mat'];
             
-            if nargout==1
-                if isfile(saveFileValid)
+             if nargin <4
+                rerun = 0;
+            end
+            
+            if nargout==1 
+                if isfile(saveFileValid) || ~rerun
                     spkData=load(saveFileValid);
                     return;
                 end
