@@ -723,9 +723,9 @@ classdef (Abstract) dataRecording < handle
             end
 
             %%%%Specific paremeters to tweek for lizards:
-            param.maxWvBaselineFraction = 0.3; %default value = 0.3
+            param.maxWvBaselineFraction = 0.5; %default value = 0.3
 
-            param.computeTimeChunks = 1; %default = 0
+            param.computeTimeChunks = 0; %default = 0
 
             param.deltaTimeChunk = 20*60; %default = 360
 
@@ -739,18 +739,21 @@ classdef (Abstract) dataRecording < handle
 
             param.maxDrift = 200;%default = 100
 
-            param.minPresenceRatio = 0.15;%default = 0.7
+            param.minPresenceRatio = 0.6;%default = 0.7
 
             param.removeDuplicateSpikes = 1; %default = 0;
 
-            param.minAmplitude = 20;%default = 20
+            param.minAmplitude = 45;%default = 20
 
             param.splitGoodAndMua_NonSomatic = 0; %default = 0; %%%Not working, raise issue
 
             param.minNumSpikes = 100; %default = 300
 
-            param.maxRPVviolations = 0.3; %fraction, default = 0.1 %%Weirdly, the refractory period violations are not reflected in the autocorrelation. How is it calculated?
+            param.maxRPVviolations = 0.1; %fraction, default = 0.1 %%Weirdly, the refractory period violations are not reflected in the autocorrelation. How is it calculated?
+            
+            param.computeDrift = 0;
 
+            param.waveformBaselineNoiseWindow = 10;
 
             %param.nChannels must correspond to the total number of channels in your raw data, including any sync channels. 
             % For Neuropixels probes, this value should typically be either 384 or 385 channels. 
@@ -924,7 +927,7 @@ classdef (Abstract) dataRecording < handle
             end
             
             if nargout==1 
-                if isfile(saveFileValid) || ~rerun
+                if isfile(saveFileValid) && ~rerun
                     spkData=load(saveFileValid);
                     return;
                 end
