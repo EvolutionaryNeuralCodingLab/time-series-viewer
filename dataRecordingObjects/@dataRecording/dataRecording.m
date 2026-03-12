@@ -953,7 +953,8 @@ classdef (Abstract) dataRecording < handle
             %}
             
             clusterTable=readtable([pathToPhyResults filesep 'cluster_info.tsv'],'FileType','delimitedtext');
-            clusterTable=sortrows(clusterTable,'ch');
+            clusterTable =sortrows(clusterTable,'cluster_id');
+            [clusterTable, idx]=sortrows(clusterTable,'ch');
             spike_clusters = readNPY([pathToPhyResults filesep 'spike_clusters.npy']);
             %spike_templates = readNPY([pathToPhyResults filesep 'spike_templates.npy']);
             spike_times = readNPY([pathToPhyResults filesep 'spike_times.npy']);
@@ -962,6 +963,22 @@ classdef (Abstract) dataRecording < handle
             
             if BombCelled
                 Tbomb = readtable([pathToPhyResults filesep 'cluster_bc_unitType.tsv'], 'FileType', 'text', 'Delimiter', '\t');
+                
+                try
+                    Tbomb = Tbomb(idx,:);
+                catch %% Sometimes BC removes one or two units from the KS output (so find index of removed units)
+                    % Get unique elements in A not in B (sorted)
+                    unique_vals = setdiff(clusterTable.cluster_id, Tbomb.cluster_id);
+                    sprintf('Unit IDs not present in BC: %s\n',num2str(unique_vals))
+
+                    dropIDX = find(clusterTable.cluster_id == unique_vals);
+
+                    clusterTable(dropIDX,:) = [];
+                    clusterTable =sortrows(clusterTable,'cluster_id');
+                    [clusterTable, idx]=sortrows(clusterTable,'ch');
+                    Tbomb = Tbomb(idx, :);
+
+                end
                 labelB = Tbomb.bc_unitType;
                 label = cellfun(@lower, labelB, 'UniformOutput', false);
             else
@@ -1002,7 +1019,8 @@ classdef (Abstract) dataRecording < handle
                 ic(1,:)=ic(1,:)+1;
             end
             %Adding phy_ID variable 
-            phy_ID = clusterTable.cluster_id;   
+            phy_ID = clusterTable.cluster_id;
+
             fprintf('Saving results to %s\n',saveFileValid);
             save(saveFileAll,'t','ic','label','neuronAmp','nSpks','phy_ID'); %save full spikes including noise
 
